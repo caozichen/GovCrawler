@@ -1,0 +1,69 @@
+export type RunStatus =
+  | 'queued'
+  | 'running'
+  | 'stopping'
+  | 'succeeded'
+  | 'failed'
+  | 'timed_out'
+  | 'stopped'
+  | 'interrupted'
+
+export interface CrawlerTask {
+  id: string
+  name: string
+  url: string
+  scriptPath: string
+  pythonPath: string
+  enabled: boolean
+  intervalMinutes: number
+  timeoutSeconds: number
+  extraArgs: string[]
+  createdAt: string
+  updatedAt: string
+  lastAttemptAt?: string
+  lastSuccessAt?: string
+  nextRunAt?: string
+}
+
+export type TaskPayload = Omit<CrawlerTask, 'id' | 'createdAt' | 'updatedAt' | 'lastAttemptAt' | 'lastSuccessAt' | 'nextRunAt'>
+
+export interface RunRecord {
+  id: string
+  taskId: string
+  taskName: string
+  trigger: 'manual' | 'schedule' | 'run-all'
+  status: RunStatus
+  queuedAt: string
+  startedAt?: string
+  finishedAt?: string
+  durationMs?: number
+  outputDir: string
+  exitCode?: number
+  recordCount?: number
+  errorCode?: string
+  errorMessage?: string
+}
+
+export interface AppSettings {
+  pythonPath: string
+  outputRoot: string
+  maxConcurrency: number
+  defaultTimeoutSeconds: number
+  retentionDays: number
+}
+
+export interface DashboardSummary {
+  taskCount: number
+  enabledCount: number
+  activeCount: number
+  successToday: number
+  failedToday: number
+  scheduler: { running: boolean; startedAt?: string }
+}
+
+export interface ValidationResult {
+  valid: boolean
+  checks: Record<string, boolean>
+}
+
+export type PathPickerKind = 'python-script' | 'python-executable' | 'directory'

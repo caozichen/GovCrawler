@@ -1,0 +1,15 @@
+node_modules/
+dist/
+dist-server/
+.crawler-console/
+20??-??-??_??-??-??-???/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.local
+*.log
