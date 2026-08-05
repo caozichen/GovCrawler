@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import Callable, Iterable, Mapping
 from urllib.error import HTTPError, URLError
 from urllib.parse import unquote, urljoin, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
@@ -566,11 +566,13 @@ class HttpClient:
         retries: int,
         request_delay: float,
         logger: CrawlerLogger,
+        attachment_url_validator: Callable[[str], bool] | None = None,
     ) -> None:
         self.timeout = timeout
         self.retries = retries
         self.request_delay = max(0.0, request_delay)
         self.logger = logger
+        self.attachment_url_validator = attachment_url_validator or is_attachment_resource_url
         self._last_request_at = 0.0
 
     def get(self, url: str, referer: str | None = None) -> HttpResponse:
@@ -668,7 +670,7 @@ class HttpClient:
             try:
                 with urlopen(request, timeout=self.timeout) as response:
                     final_url = without_fragment(response.geturl())
-                    if not is_attachment_resource_url(final_url):
+                    if not self.attachment_url_validator(final_url):
                         raise ValueError(f"Attachment redirected outside the allowed section: {final_url}")
                     content_length = response.headers.get("Content-Length")
                     reported_size: int | None = None
