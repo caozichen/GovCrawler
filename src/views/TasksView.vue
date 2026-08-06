@@ -4,7 +4,8 @@ import { storeToRefs } from 'pinia'
 import {
   CheckCircle2,
   FileCode2,
-  Filter,
+  FileText,
+  LoaderCircle,
   Pencil,
   Play,
   Plus,
@@ -14,6 +15,7 @@ import {
 } from '@lucide/vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import StatusBadge from '../components/StatusBadge.vue'
+import TaskDetailsDrawer from '../components/TaskDetailsDrawer.vue'
 import TaskDrawer from '../components/TaskDrawer.vue'
 import { api, ApiError } from '../services/api'
 import { toast } from '../services/toast'
@@ -23,24 +25,22 @@ import type { CrawlerTask, RunStatus, TaskPayload } from '../types'
 const consoleStore = useConsoleStore()
 const { tasks, runs, settings, dashboard, loading } = storeToRefs(consoleStore)
 const query = ref('')
-const enabledFilter = ref<'all' | 'enabled' | 'disabled'>('all')
 const drawerOpen = ref(false)
 const editingTask = ref<CrawlerTask | null>(null)
 const saving = ref(false)
+const detailsDrawerOpen = ref(false)
+const detailsTask = ref<CrawlerTask | null>(null)
+const detailsSaving = ref(false)
 const runningTaskId = ref('')
+const openingScriptId = ref('')
 const deletingTask = ref<CrawlerTask | null>(null)
 const deleting = ref(false)
 
 const filteredTasks = computed(() => {
   const keyword = query.value.trim().toLowerCase()
-  return tasks.value.filter((task) => {
-    const matchesKeyword = !keyword || task.name.toLowerCase().includes(keyword) || task.url.toLowerCase().includes(keyword)
-    const matchesEnabled =
-      enabledFilter.value === 'all' ||
-      (enabledFilter.value === 'enabled' && task.enabled) ||
-      (enabledFilter.value === 'disabled' && !task.enabled)
-    return matchesKeyword && matchesEnabled
-  })
+  return tasks.value.filter((task) =>
+    !keyword || [task.name, task.url, task.scriptPath, task.details].some((value) => value.toLowerCase().includes(keyword)),
+  )
 })
 
 const latestByTask = computed(() => {
@@ -63,6 +63,11 @@ function openEdit(task: CrawlerTask) {
   drawerOpen.value = true
 }
 
+function openDetails(task: CrawlerTask) {
+  detailsTask.value = task
+  detailsDrawerOpen.value = true
+}
+
 async function saveTask(payload: TaskPayload) {
   saving.value = true
   try {
@@ -76,6 +81,20 @@ async function saveTask(payload: TaskPayload) {
   }
 }
 
+async function saveDetails(details: string) {
+  if (!detailsTask.value) return
+  detailsSaving.value = true
+  try {
+    await consoleStore.saveTaskDetails(detailsTask.value.id, details)
+    detailsDrawerOpen.value = false
+    toast.success('脚本详情已保存。')
+  } catch (error) {
+    toast.error(messageOf(error))
+  } finally {
+    detailsSaving.value = false
+  }
+}
+
 async function runTask(task: CrawlerTask) {
   runningTaskId.value = task.id
   try {
@@ -85,6 +104,19 @@ async function runTask(task: CrawlerTask) {
     toast.error(messageOf(error))
   } finally {
     runningTaskId.value = ''
+  }
+}
+
+async function openScript(task: CrawlerTask) {
+  if (openingScriptId.value) return
+  openingScriptId.value = task.id
+  try {
+    await api.openTaskScript(task.id)
+    toast.success('已在文件管理器中定位爬虫文件。')
+  } catch (error) {
+    toast.error(messageOf(error))
+  } finally {
+    openingScriptId.value = ''
   }
 }
 
@@ -157,11 +189,6 @@ function messageOf(error: unknown): string {
         <strong>{{ dashboard.taskCount }}</strong>
         <small>ALL TASKS</small>
       </div>
-      <div class="metric-item metric-item--accent">
-        <span>已启用</span>
-        <strong>{{ dashboard.enabledCount }}</strong>
-        <small>ENABLED</small>
-      </div>
       <div class="metric-item metric-item--blue">
         <span>正在执行</span>
         <strong>{{ dashboard.activeCount }}</strong>
@@ -194,14 +221,6 @@ function messageOf(error: unknown): string {
         <Search :size="17" />
         <input v-model="query" type="search" placeholder="搜索任务或网址" />
       </label>
-      <label class="select-shell">
-        <Filter :size="16" />
-        <select v-model="enabledFilter">
-          <option value="all">全部状态</option>
-          <option value="enabled">已启用</option>
-          <option value="disabled">已禁用</option>
-        </select>
-      </label>
       <span class="table-toolbar__count">{{ filteredTasks.length }} TASKS</span>
     </div>
 
@@ -212,11 +231,8 @@ function messageOf(error: unknown): string {
             <tr>
               <th>任务 / 网址</th>
               <th>爬虫文件</th>
-              <th>间隔</th>
-              <th>启用状态</th>
               <th>运行状态</th>
               <th>上次尝试</th>
-              <th>下次运行</th>
               <th class="table-actions-heading">操作</th>
             </tr>
           </thead>
@@ -229,24 +245,37 @@ function messageOf(error: unknown): string {
                 </div>
               </td>
               <td>
-                <div class="path-cell" :title="task.scriptPath"><FileCode2 :size="15" /> {{ task.scriptPath }}</div>
+                <div class="path-cell" :title="task.scriptPath">
+                  <button
+                    class="path-cell__open"
+                    type="button"
+                    title="在文件夹中定位"
+                    aria-label="在文件夹中定位爬虫文件"
+                    :disabled="Boolean(openingScriptId)"
+                    @click="openScript(task)"
+                  >
+                    <LoaderCircle v-if="openingScriptId === task.id" class="loading-indicator" :size="15" />
+                    <FileCode2 v-else :size="15" />
+                  </button>
+                  <span>{{ task.scriptPath }}</span>
+                </div>
               </td>
-              <td><span class="mono-value">{{ task.intervalMinutes }} min</span></td>
-              <td><StatusBadge :status="task.enabled ? 'enabled' : 'disabled'" /></td>
               <td><StatusBadge :status="runtimeStatus(task)" /></td>
               <td><span class="time-cell">{{ formatTime(task.lastAttemptAt) }}</span></td>
-              <td><span class="time-cell">{{ formatTime(task.nextRunAt) }}</span></td>
               <td>
                 <div class="row-actions">
                   <button
                     class="icon-button icon-button--run"
                     type="button"
-                    :title="task.enabled ? '立即运行' : '任务已禁用'"
-                    :aria-label="task.enabled ? '立即运行' : '任务已禁用'"
-                    :disabled="!task.enabled || runningTaskId === task.id || ['queued', 'running', 'stopping'].includes(runtimeStatus(task))"
+                    title="立即运行"
+                    aria-label="立即运行"
+                    :disabled="runningTaskId === task.id || ['queued', 'running', 'stopping'].includes(runtimeStatus(task))"
                     @click="runTask(task)"
                   >
                     <Play :size="16" />
+                  </button>
+                  <button class="icon-button" type="button" title="脚本详情" aria-label="脚本详情" @click="openDetails(task)">
+                    <FileText :size="16" />
                   </button>
                   <button class="icon-button" type="button" title="检查配置" aria-label="检查配置" @click="validateTask(task.id)">
                     <ShieldCheck :size="16" />
@@ -280,6 +309,14 @@ function messageOf(error: unknown): string {
     @close="drawerOpen = false"
     @save="saveTask"
     @validate="validateDraft"
+  />
+
+  <TaskDetailsDrawer
+    :open="detailsDrawerOpen"
+    :task="detailsTask"
+    :saving="detailsSaving"
+    @close="detailsDrawerOpen = false"
+    @save="saveDetails"
   />
 
   <ConfirmDialog

@@ -42,6 +42,10 @@ export const useConsoleStore = defineStore('console', {
       else await api.createTask(payload)
       await this.refresh(true)
     },
+    async saveTaskDetails(id: string, details: string) {
+      await api.updateTaskDetails(id, details)
+      await this.refresh(true)
+    },
     async deleteTask(id: string) {
       await api.deleteTask(id)
       await this.refresh(true)

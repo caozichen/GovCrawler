@@ -76,7 +76,7 @@ export class RunManager extends EventEmitter {
     const state = this.store.snapshot()
     const task = state.tasks.find((item) => item.id === taskId)
     if (!task) throw new AppError(404, 'TASK_NOT_FOUND', '没有找到这个任务。')
-    if (!task.enabled) {
+    if (!task.enabled && trigger === 'schedule') {
       throw new AppError(409, 'TASK_DISABLED', '任务已禁用，请先启用后再运行。')
     }
     if (this.busyTaskIds.has(taskId)) {

@@ -9,10 +9,8 @@ import {
   History,
   LogOut,
   Menu,
-  Play,
   RefreshCw,
   Settings,
-  Square,
   X,
 } from '@lucide/vue'
 import { ApiError } from '../services/api'
@@ -34,8 +32,6 @@ const pageTitle = computed(() => {
   if (route.name === 'settings') return '系统设置'
   return '任务控制台'
 })
-
-const schedulerRunning = computed(() => consoleStore.dashboard.scheduler.running)
 
 onMounted(async () => {
   try {
@@ -59,26 +55,9 @@ watch(
   },
 )
 
-async function toggleScheduler() {
-  actionBusy.value = true
-  try {
-    if (schedulerRunning.value) {
-      await consoleStore.stopScheduler()
-      toast.info('调度已暂停，正在运行的任务不会被终止。')
-    } else {
-      await consoleStore.startScheduler()
-      toast.success('调度已启动。')
-    }
-  } catch (error) {
-    toast.error(messageOf(error))
-  } finally {
-    actionBusy.value = false
-  }
-}
-
 async function runAll() {
-  if (consoleStore.dashboard.enabledCount === 0) {
-    toast.info('当前没有已启用的任务。')
+  if (consoleStore.dashboard.taskCount === 0) {
+    toast.info('当前没有任务。')
     return
   }
   actionBusy.value = true
@@ -142,8 +121,8 @@ function messageOf(error: unknown): string {
 
       <div class="sidebar-status">
         <div class="sidebar-status__row">
-          <span class="live-dot" :class="{ 'live-dot--active': schedulerRunning }" />
-          <span>{{ schedulerRunning ? '调度运行中' : '调度已暂停' }}</span>
+          <span class="live-dot live-dot--active" />
+          <span>手动执行模式</span>
         </div>
         <div class="sidebar-status__meta">
           <Clock3 :size="14" />
@@ -176,19 +155,6 @@ function messageOf(error: unknown): string {
             >
               <RefreshCw :size="17" />
               <span>立即运行全部</span>
-            </button>
-            <button
-              class="button"
-              :class="schedulerRunning ? 'button--warning' : 'button--primary'"
-              type="button"
-              :title="schedulerRunning ? '停止调度' : '启动调度'"
-              :aria-label="schedulerRunning ? '停止调度' : '启动调度'"
-              :disabled="actionBusy"
-              @click="toggleScheduler"
-            >
-              <Square v-if="schedulerRunning" :size="16" />
-              <Play v-else :size="17" />
-              <span>{{ schedulerRunning ? '停止调度' : '启动调度' }}</span>
             </button>
             <ThemeToggle />
             <div class="user-menu">

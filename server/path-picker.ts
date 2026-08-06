@@ -30,7 +30,8 @@ export async function pickLocalPath(
   initialPath = '',
   options: PathPickerOptions = {},
 ): Promise<string | null> {
-  if ((options.platform ?? process.platform) !== 'win32') {
+  const platform = options.platform ?? process.platform
+  if (!['win32', 'darwin'].includes(platform)) {
     throw new AppError(501, 'PATH_PICKER_UNSUPPORTED', '当前系统暂不支持路径选择器。')
   }
   if (pickerActive) {
@@ -40,12 +41,17 @@ export async function pickLocalPath(
   pickerActive = true
   try {
     const executePicker = options.executePicker ?? executePowerShellPicker
+    const command = platform === 'darwin' ? 'osascript' : 'powershell.exe'
+    const args = platform === 'darwin'
+      ? ['-e', buildMacPickerScript(kind)]
+      : ['-NoProfile', '-STA', '-WindowStyle', 'Hidden', '-Command', buildPickerScript(kind)]
+    const pickerInitialPath = platform === 'darwin' ? await resolvePickerInitialPath(initialPath) : initialPath
     const { stdout } = await executePicker(
-      'powershell.exe',
-      ['-NoProfile', '-STA', '-WindowStyle', 'Hidden', '-Command', buildPickerScript(kind)],
+      command,
+      args,
       {
         encoding: 'utf8',
-        env: { ...process.env, PA_PICKER_INITIAL_PATH: initialPath },
+        env: { ...process.env, PA_PICKER_INITIAL_PATH: pickerInitialPath },
         maxBuffer: 1024 * 1024,
         windowsHide: true,
       },
@@ -73,7 +79,7 @@ export async function pickLocalPath(
     if (kind === 'python-script' && path.extname(normalizedPath).toLowerCase() !== '.py') {
       throw new AppError(422, 'SELECTED_PATH_NOT_PYTHON_SCRIPT', '请选择 .py 爬虫文件。')
     }
-    if (kind === 'python-executable' && path.extname(normalizedPath).toLowerCase() !== '.exe') {
+    if (kind === 'python-executable' && platform === 'win32' && path.extname(normalizedPath).toLowerCase() !== '.exe') {
       throw new AppError(422, 'SELECTED_PATH_NOT_EXECUTABLE', '请选择 Python 可执行文件。')
     }
 
@@ -89,6 +95,17 @@ export async function pickLocalPath(
     )
   } finally {
     pickerActive = false
+  }
+}
+
+async function resolvePickerInitialPath(initialPath: string): Promise<string> {
+  if (!initialPath || !path.isAbsolute(initialPath)) return ''
+  const normalizedPath = path.normalize(initialPath)
+  try {
+    const initialStats = await stat(normalizedPath)
+    return initialStats.isDirectory() ? normalizedPath : path.dirname(normalizedPath)
+  } catch {
+    return ''
   }
 }
 
@@ -144,4 +161,27 @@ function buildPickerScript(kind: PathPickerKind): string {
     "if ($initial -and (Test-Path -LiteralPath $initial)) { $item = Get-Item -LiteralPath $initial; if ($item.PSIsContainer) { $dialog.InitialDirectory = $item.FullName } else { $dialog.InitialDirectory = $item.DirectoryName; $dialog.FileName = $item.Name } }",
     'try { $result = $dialog.ShowDialog($owner); if ($result -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write($dialog.FileName) } } finally { $dialog.Dispose(); $owner.Dispose() }',
   ].join('; ')
+}
+
+function buildMacPickerScript(kind: PathPickerKind): string {
+  const prompt = kind === 'directory'
+    ? '选择输出目录'
+    : kind === 'python-script'
+      ? '选择 Python 爬虫文件'
+      : '选择 Python 解释器'
+  const chooser = kind === 'directory' ? 'choose folder' : 'choose file'
+  return [
+    'set initialPath to system attribute "PA_PICKER_INITIAL_PATH"',
+    'try',
+    `if initialPath is "" then`,
+    `set selectedPath to ${chooser} with prompt "${prompt}"`,
+    'else',
+    `set selectedPath to ${chooser} with prompt "${prompt}" default location (POSIX file initialPath as alias)`,
+    'end if',
+    'return POSIX path of selectedPath',
+    'on error errorMessage number errorNumber',
+    'if errorNumber is -128 then return ""',
+    'error errorMessage number errorNumber',
+    'end try',
+  ].join('\n')
 }

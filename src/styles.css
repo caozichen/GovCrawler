@@ -579,7 +579,7 @@ p {
 .metric-strip {
   display: grid;
   min-height: 102px;
-  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
   margin-bottom: 28px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -762,17 +762,14 @@ p {
 }
 
 .task-table {
-  min-width: 1240px;
+  min-width: 1020px;
 }
 
-.task-table th:nth-child(1) { width: 20%; }
-.task-table th:nth-child(2) { width: 17%; }
-.task-table th:nth-child(3) { width: 7%; }
-.task-table th:nth-child(4) { width: 9%; }
-.task-table th:nth-child(5) { width: 10%; }
-.task-table th:nth-child(6) { width: 12%; }
-.task-table th:nth-child(7) { width: 12%; }
-.task-table th:nth-child(8) { width: 174px; }
+.task-table th:nth-child(1) { width: 28%; }
+.task-table th:nth-child(2) { width: 27%; }
+.task-table th:nth-child(3) { width: 12%; }
+.task-table th:nth-child(4) { width: 15%; }
+.task-table th:nth-child(5) { width: 190px; }
 
 .run-table th:nth-child(1) { width: 150px; }
 .run-table th:nth-child(2) { width: 16%; }
@@ -896,6 +893,37 @@ p {
 
 .path-cell svg {
   flex: 0 0 auto;
+}
+
+.path-cell > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.path-cell__open {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+}
+
+.path-cell__open:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--blue);
+}
+
+.path-cell__open:disabled {
+  cursor: wait;
+  opacity: 0.55;
 }
 
 .mono-value,
@@ -1136,6 +1164,39 @@ p {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.details-editor {
+  display: flex;
+  flex-direction: column;
+}
+
+.details-editor .form-section {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.details-editor .field {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.field > textarea.details-editor__textarea {
+  min-height: 280px;
+  flex: 1 1 auto;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.details-editor__count {
+  margin-top: 8px;
+  color: var(--faint);
+  font-family: Consolas, monospace;
+  font-size: 10px;
+  text-align: right;
 }
 
 .input-shell {
@@ -1893,7 +1954,7 @@ p {
   }
 
   .metric-strip {
-    grid-template-columns: repeat(5, minmax(105px, 1fr));
+    grid-template-columns: repeat(4, minmax(105px, 1fr));
     overflow-x: auto;
   }
 
@@ -1995,7 +2056,7 @@ p {
   }
 
   .metric-strip {
-    grid-template-columns: repeat(5, 132px);
+    grid-template-columns: repeat(4, 132px);
     min-height: 88px;
     margin-bottom: 22px;
   }

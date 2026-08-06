@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { getDefaultScriptDetails } from './script-details.js'
 import type { CrawlerTask, PersistedState } from './types.js'
 
 function createDefaultState(projectRoot: string): PersistedState {
@@ -10,6 +11,7 @@ function createDefaultState(projectRoot: string): PersistedState {
     name: '示例网页采集',
     url: 'https://example.com',
     scriptPath: path.join(projectRoot, 'crawlers', 'example.py'),
+    details: getDefaultScriptDetails('example.py'),
     pythonPath: '',
     enabled: false,
     intervalMinutes: 30,
@@ -49,12 +51,14 @@ export class StateStore {
     await mkdir(this.stateDir, { recursive: true })
     try {
       this.state = JSON.parse(await readFile(this.statePath, 'utf8')) as PersistedState
+      this.normalizeState()
       this.recoverInterruptedRuns()
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
       this.state = createDefaultState(this.projectRoot)
     }
     this.state.scheduler = { running: false }
+    for (const task of this.state.tasks) task.nextRunAt = undefined
     await this.persist()
   }
 
@@ -91,6 +95,12 @@ export class StateStore {
         run.errorCode = 'APP_RESTARTED'
         run.errorMessage = '本地控制程序重启，任务状态已恢复为中断。'
       }
+    }
+  }
+
+  private normalizeState(): void {
+    for (const task of this.state.tasks) {
+      if (typeof task.details !== 'string') task.details = getDefaultScriptDetails(task.scriptPath)
     }
   }
 

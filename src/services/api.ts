@@ -69,10 +69,13 @@ export const api = {
     request<CrawlerTask>('/api/tasks', { method: 'POST', body: JSON.stringify(payload) }),
   updateTask: (id: string, payload: TaskPayload) =>
     request<CrawlerTask>(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  updateTaskDetails: (id: string, details: string) =>
+    request<CrawlerTask>(`/api/tasks/${id}/details`, { method: 'PATCH', body: JSON.stringify({ details }) }),
   deleteTask: (id: string) => request<null>(`/api/tasks/${id}`, { method: 'DELETE' }),
   validateTask: (id: string) => request<ValidationResult>(`/api/tasks/${id}/validate`, { method: 'POST' }),
   validateTaskDraft: (payload: TaskPayload) =>
     request<ValidationResult>('/api/tasks/validate', { method: 'POST', body: JSON.stringify(payload) }),
+  openTaskScript: (id: string) => request<null>(`/api/tasks/${id}/open-script`, { method: 'POST' }),
   runTask: (id: string) => request<RunRecord>(`/api/tasks/${id}/run`, { method: 'POST' }),
   runAll: () => request<{ accepted: string[]; skipped: string[] }>('/api/tasks/run-all', { method: 'POST' }),
   runs: () => request<RunRecord[]>('/api/runs'),

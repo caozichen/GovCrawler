@@ -13,6 +13,7 @@ export interface CrawlerTask {
   name: string
   url: string
   scriptPath: string
+  details: string
   pythonPath: string
   enabled: boolean
   intervalMinutes: number
@@ -25,7 +26,10 @@ export interface CrawlerTask {
   nextRunAt?: string
 }
 
-export type TaskPayload = Omit<CrawlerTask, 'id' | 'createdAt' | 'updatedAt' | 'lastAttemptAt' | 'lastSuccessAt' | 'nextRunAt'>
+export type TaskPayload = Omit<
+  CrawlerTask,
+  'id' | 'details' | 'createdAt' | 'updatedAt' | 'lastAttemptAt' | 'lastSuccessAt' | 'nextRunAt'
+>
 
 export interface RunRecord {
   id: string

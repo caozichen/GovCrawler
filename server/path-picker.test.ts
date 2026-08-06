@@ -43,6 +43,31 @@ test('returns null when the native picker is cancelled', async () => {
   assert.equal(result, null)
 })
 
+test('uses the macOS picker and accepts an extensionless Python executable', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'pa-path-picker-mac-'))
+  const executablePath = path.join(root, 'python3')
+  await writeFile(executablePath, '', 'utf8')
+  let invocation: { command: string; args: readonly string[]; initialPath?: string } | undefined
+  const executePicker: ExecutePicker = async (command, args, options) => {
+    invocation = { command, args, initialPath: options.env.PA_PICKER_INITIAL_PATH }
+    return { stdout: executablePath, stderr: '' }
+  }
+
+  try {
+    const result = await pickLocalPath('python-executable', executablePath, {
+      platform: 'darwin',
+      executePicker,
+    })
+    assert.equal(result, executablePath)
+    assert.equal(invocation?.command, 'osascript')
+    assert.equal(invocation?.initialPath, root)
+    assert.equal(invocation?.args[0], '-e')
+    assert.match(invocation?.args[1] || '', /choose file/)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('rejects a non-Python file for the crawler script field', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'pa-path-picker-invalid-'))
   const textPath = path.join(root, 'crawler.txt')

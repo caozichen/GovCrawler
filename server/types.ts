@@ -15,6 +15,7 @@ export interface CrawlerTask {
   name: string
   url: string
   scriptPath: string
+  details: string
   pythonPath: string
   enabled: boolean
   intervalMinutes: number

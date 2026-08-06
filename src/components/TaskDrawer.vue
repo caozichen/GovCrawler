@@ -128,20 +128,6 @@ function buildPayload(): TaskPayload | null {
               <span>目标网址</span>
               <input v-model="form.url" placeholder="https://example.com" inputmode="url" />
             </label>
-            <label class="field">
-              <span>启用任务</span>
-              <button
-                class="toggle-row"
-                :class="{ 'toggle-row--active': form.enabled }"
-                type="button"
-                role="switch"
-                :aria-checked="form.enabled"
-                @click="form.enabled = !form.enabled"
-              >
-                <span class="toggle"><span /></span>
-                <span>{{ form.enabled ? '已启用' : '已禁用' }}</span>
-              </button>
-            </label>
           </section>
 
           <section class="form-section">
@@ -150,7 +136,7 @@ function buildPayload(): TaskPayload | null {
               <span>Python 爬虫文件</span>
               <div class="input-shell input-shell--plain">
                 <FileCode2 :size="17" />
-                <input v-model="form.scriptPath" placeholder="D:\\path\\crawler.py" />
+                <input v-model="form.scriptPath" placeholder="C:\\path\\crawler.py 或 /Users/name/crawler.py" />
                 <button
                   class="input-action"
                   type="button"
@@ -167,7 +153,7 @@ function buildPayload(): TaskPayload | null {
             <label class="field">
               <span>Python 解释器（留空使用全局设置）</span>
               <div class="input-shell input-shell--plain">
-                <input v-model="form.pythonPath" placeholder="例如：D:\\Python312\\python.exe" />
+                <input v-model="form.pythonPath" placeholder="例如：C:\\Python312\\python.exe 或 /usr/bin/python3" />
                 <button
                   class="input-action"
                   type="button"
@@ -181,16 +167,10 @@ function buildPayload(): TaskPayload | null {
                 </button>
               </div>
             </label>
-            <div class="field-grid">
-              <label class="field">
-                <span>运行间隔（分钟）</span>
-                <input v-model.number="form.intervalMinutes" type="number" min="1" max="525600" />
-              </label>
-              <label class="field">
-                <span>超时（秒）</span>
-                <input v-model.number="form.timeoutSeconds" type="number" min="5" max="86400" />
-              </label>
-            </div>
+            <label class="field">
+              <span>超时（秒）</span>
+              <input v-model.number="form.timeoutSeconds" type="number" min="5" max="86400" />
+            </label>
             <label class="field">
               <span>额外参数（每行一个）</span>
               <textarea v-model="extraArgsText" rows="4" placeholder="--mode&#10;full" />

@@ -29,6 +29,10 @@ export const taskInputSchema = z.object({
     .default([]),
 })
 
+export const taskDetailsSchema = z.object({
+  details: z.string().trim().max(500, '脚本详情不能超过 500 字'),
+})
+
 export const settingsSchema = z.object({
   pythonPath: z.string().trim().min(1),
   outputRoot: z.string().trim().min(1),

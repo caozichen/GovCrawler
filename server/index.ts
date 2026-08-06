@@ -7,19 +7,21 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { ZodError } from 'zod'
 import { AuthService } from './auth.js'
 import { AppError } from './errors.js'
-import { openOutputDirectory } from './open-directory.js'
+import { openOutputDirectory, revealFileInDirectory } from './open-directory.js'
 import { pickLocalPath } from './path-picker.js'
 import { RunManager } from './runner.js'
 import { SchedulerService } from './scheduler.js'
+import { getDefaultScriptDetails } from './script-details.js'
 import { StateStore } from './store.js'
 import type { CrawlerTask, TaskInput } from './types.js'
 import { pathExists } from './utils.js'
-import { loginSchema, pathPickerSchema, settingsSchema, taskInputSchema } from './validation.js'
+import { loginSchema, pathPickerSchema, settingsSchema, taskDetailsSchema, taskInputSchema } from './validation.js'
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.resolve(process.env.PA_PROJECT_ROOT || path.join(moduleDirectory, '..'))
 const port = Number(process.env.PA_PORT || 4318)
 const host = '127.0.0.1'
+const schedulerAvailable = false
 
 const store = new StateStore(projectRoot)
 await store.init()
@@ -126,6 +128,7 @@ app.post(
     const now = new Date().toISOString()
     const task: CrawlerTask = {
       ...input,
+      details: getDefaultScriptDetails(input.scriptPath),
       pythonPath: input.pythonPath || '',
       extraArgs: input.extraArgs || [],
       id: randomUUID(),
@@ -137,6 +140,23 @@ app.post(
     })
     await scheduler.refreshTask(task.id)
     response.status(201).json({ ok: true, data: task })
+  }),
+)
+
+app.patch(
+  '/api/tasks/:id/details',
+  asyncRoute(async (request, response) => {
+    const { details } = taskDetailsSchema.parse(request.body)
+    let updated = false
+    await store.update((draft) => {
+      const task = draft.tasks.find((item) => item.id === request.params.id)
+      if (!task) return
+      task.details = details
+      task.updatedAt = new Date().toISOString()
+      updated = true
+    })
+    if (!updated) throw new AppError(404, 'TASK_NOT_FOUND', '没有找到这个任务。')
+    response.json({ ok: true, data: store.snapshot().tasks.find((item) => item.id === request.params.id) })
   }),
 )
 
@@ -210,6 +230,17 @@ app.post(
 )
 
 app.post(
+  '/api/tasks/:id/open-script',
+  asyncRoute(async (request, response) => {
+    const task = store.snapshot().tasks.find((item) => item.id === request.params.id)
+    if (!task) throw new AppError(404, 'TASK_NOT_FOUND', '没有找到这个任务。')
+    const scriptPath = path.isAbsolute(task.scriptPath) ? path.normalize(task.scriptPath) : path.resolve(projectRoot, task.scriptPath)
+    await revealFileInDirectory(scriptPath)
+    response.json({ ok: true, data: null })
+  }),
+)
+
+app.post(
   '/api/tasks/:id/run',
   asyncRoute(async (request, response) => {
     const run = await runner.enqueue(request.params.id, 'manual')
@@ -220,7 +251,7 @@ app.post(
 app.post(
   '/api/tasks/run-all',
   asyncRoute(async (_request, response) => {
-    const tasks = store.snapshot().tasks.filter((task) => task.enabled)
+    const tasks = store.snapshot().tasks
     const accepted: string[] = []
     const skipped: string[] = []
     for (const task of tasks) {
@@ -276,12 +307,15 @@ app.post(
 )
 
 app.get('/api/scheduler', (_request, response) => {
-  response.json({ ok: true, data: store.snapshot().scheduler })
+  response.json({ ok: true, data: { ...store.snapshot().scheduler, available: schedulerAvailable } })
 })
 
 app.post(
   '/api/scheduler/start',
   asyncRoute(async (_request, response) => {
+    if (!schedulerAvailable) {
+      throw new AppError(409, 'SCHEDULER_DISABLED', '定时调度功能当前已停用，请手动执行任务。')
+    }
     await scheduler.start()
     response.json({ ok: true, data: store.snapshot().scheduler })
   }),

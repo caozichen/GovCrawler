@@ -15,6 +15,7 @@ test('builds a structured Python invocation without a shell command string', () 
     name: 'Example',
     url: 'https://example.com?q=a b',
     scriptPath: path.join('crawlers', 'example.py'),
+    details: 'Example crawler',
     pythonPath: '',
     enabled: true,
     intervalMinutes: 5,
@@ -88,7 +89,7 @@ test('reserves a task before asynchronous run directory allocation', async () =>
   }
 })
 
-test('rejects manual execution for a disabled task', async () => {
+test('allows manual execution but rejects scheduled execution for a disabled task', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'pa-disabled-task-'))
   const store = new StateStore(root)
   await store.init()
@@ -97,11 +98,15 @@ test('rejects manual execution for a disabled task', async () => {
   assert.ok(taskId)
 
   try {
+    const run = await manager.enqueue(taskId, 'manual')
+    assert.equal(run.status, 'queued')
+    assert.equal(store.snapshot().runs.length, 1)
+    await manager.stopAll()
+
     await assert.rejects(
-      manager.enqueue(taskId, 'manual'),
+      manager.enqueue(taskId, 'schedule'),
       (error: unknown) => error instanceof AppError && error.code === 'TASK_DISABLED',
     )
-    assert.equal(store.snapshot().runs.length, 0)
     assert.equal(manager.isTaskBusy(taskId), false)
   } finally {
     await manager.stopAll()
