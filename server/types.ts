@@ -10,8 +10,15 @@ export type RunStatus =
   | 'stopped'
   | 'interrupted'
 
+export interface TaskCategory {
+  id: string
+  name: string
+  color: string
+}
+
 export interface CrawlerTask {
   id: string
+  categoryId: string
   name: string
   url: string
   scriptPath: string
@@ -32,6 +39,7 @@ export interface RunRecord {
   id: string
   taskId: string
   taskName: string
+  categoryId: string
   trigger: RunTrigger
   status: RunStatus
   queuedAt: string
@@ -59,7 +67,8 @@ export interface SchedulerState {
 }
 
 export interface PersistedState {
-  schemaVersion: 1
+  schemaVersion: 2
+  categories: TaskCategory[]
   tasks: CrawlerTask[]
   runs: RunRecord[]
   settings: AppSettings
@@ -67,6 +76,7 @@ export interface PersistedState {
 }
 
 export interface TaskInput {
+  categoryId: string
   name: string
   url: string
   scriptPath: string

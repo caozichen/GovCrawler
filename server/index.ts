@@ -13,9 +13,9 @@ import { RunManager } from './runner.js'
 import { SchedulerService } from './scheduler.js'
 import { getDefaultScriptDetails } from './script-details.js'
 import { StateStore } from './store.js'
-import type { CrawlerTask, TaskInput } from './types.js'
+import type { CrawlerTask, TaskCategory, TaskInput } from './types.js'
 import { pathExists } from './utils.js'
-import { loginSchema, pathPickerSchema, settingsSchema, taskDetailsSchema, taskInputSchema } from './validation.js'
+import { categoryInputSchema, loginSchema, pathPickerSchema, settingsSchema, taskDetailsSchema, taskInputSchema } from './validation.js'
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.resolve(process.env.PA_PROJECT_ROOT || path.join(moduleDirectory, '..'))
@@ -117,6 +117,67 @@ app.get('/api/dashboard', (_request, response) => {
   })
 })
 
+app.get('/api/categories', (_request, response) => {
+  response.json({ ok: true, data: store.snapshot().categories })
+})
+
+app.post(
+  '/api/categories',
+  asyncRoute(async (request, response) => {
+    const input = categoryInputSchema.parse(request.body)
+    const duplicate = store.snapshot().categories.some((category) => category.name.toLowerCase() === input.name.toLowerCase())
+    if (duplicate) throw new AppError(409, 'CATEGORY_NAME_EXISTS', '分类名称已存在。')
+    const category: TaskCategory = { id: randomUUID(), name: input.name, color: input.color.toUpperCase() }
+    await store.update((draft) => {
+      draft.categories.push(category)
+    })
+    response.status(201).json({ ok: true, data: category })
+  }),
+)
+
+app.patch(
+  '/api/categories/:id',
+  asyncRoute(async (request, response) => {
+    const input = categoryInputSchema.parse(request.body)
+    const snapshot = store.snapshot()
+    const duplicate = snapshot.categories.some(
+      (category) => category.id !== request.params.id && category.name.toLowerCase() === input.name.toLowerCase(),
+    )
+    if (duplicate) throw new AppError(409, 'CATEGORY_NAME_EXISTS', '分类名称已存在。')
+    let updated = false
+    await store.update((draft) => {
+      const category = draft.categories.find((item) => item.id === request.params.id)
+      if (!category) return
+      Object.assign(category, { name: input.name, color: input.color.toUpperCase() })
+      updated = true
+    })
+    if (!updated) throw new AppError(404, 'CATEGORY_NOT_FOUND', '没有找到这个分类。')
+    response.json({ ok: true, data: store.snapshot().categories.find((item) => item.id === request.params.id) })
+  }),
+)
+
+app.delete(
+  '/api/categories/:id',
+  asyncRoute(async (request, response) => {
+    const snapshot = store.snapshot()
+    const category = snapshot.categories.find((item) => item.id === request.params.id)
+    if (!category) throw new AppError(404, 'CATEGORY_NOT_FOUND', '没有找到这个分类。')
+    if (snapshot.categories.length <= 1) throw new AppError(409, 'LAST_CATEGORY', '至少需要保留一个分类。')
+    const replacement = snapshot.categories.find((item) => item.id !== category.id)
+    if (!replacement) throw new AppError(409, 'LAST_CATEGORY', '至少需要保留一个分类。')
+    const reassignedTasks = snapshot.tasks.filter((task) => task.categoryId === category.id).length
+    await store.update((draft) => {
+      for (const task of draft.tasks) if (task.categoryId === category.id) task.categoryId = replacement.id
+      for (const run of draft.runs) if (run.categoryId === category.id) run.categoryId = replacement.id
+      draft.categories = draft.categories.filter((item) => item.id !== category.id)
+    })
+    response.json({
+      ok: true,
+      data: { removedId: category.id, replacementCategoryId: replacement.id, reassignedTasks },
+    })
+  }),
+)
+
 app.get('/api/tasks', (_request, response) => {
   response.json({ ok: true, data: store.snapshot().tasks })
 })
@@ -125,6 +186,9 @@ app.post(
   '/api/tasks',
   asyncRoute(async (request, response) => {
     const input = taskInputSchema.parse(request.body) as TaskInput
+    if (!store.snapshot().categories.some((category) => category.id === input.categoryId)) {
+      throw new AppError(422, 'CATEGORY_NOT_FOUND', '请选择有效的任务分类。')
+    }
     const now = new Date().toISOString()
     const task: CrawlerTask = {
       ...input,
@@ -164,11 +228,15 @@ app.patch(
   '/api/tasks/:id',
   asyncRoute(async (request, response) => {
     const input = taskInputSchema.parse(request.body) as TaskInput
+    if (!store.snapshot().categories.some((category) => category.id === input.categoryId)) {
+      throw new AppError(422, 'CATEGORY_NOT_FOUND', '请选择有效的任务分类。')
+    }
     let updated = false
     await store.update((draft) => {
       const task = draft.tasks.find((item) => item.id === request.params.id)
       if (!task) return
       Object.assign(task, input, { extraArgs: input.extraArgs || [], updatedAt: new Date().toISOString() })
+      for (const run of draft.runs) if (run.taskId === task.id) run.categoryId = input.categoryId
       updated = true
     })
     if (!updated) throw new AppError(404, 'TASK_NOT_FOUND', '没有找到这个任务。')

@@ -1,4 +1,4 @@
-import type { AppSettings, CrawlerTask, DashboardSummary, PathPickerKind, RunRecord, TaskPayload, ValidationResult } from '../types'
+import type { AppSettings, CrawlerTask, DashboardSummary, PathPickerKind, RunRecord, TaskCategory, TaskPayload, ValidationResult } from '../types'
 
 interface ApiEnvelope<T> {
   ok: true
@@ -64,6 +64,15 @@ export const api = {
       body: JSON.stringify({ kind, initialPath }),
     }),
   dashboard: () => request<DashboardSummary>('/api/dashboard'),
+  categories: () => request<TaskCategory[]>('/api/categories'),
+  createCategory: (payload: Pick<TaskCategory, 'name' | 'color'>) =>
+    request<TaskCategory>('/api/categories', { method: 'POST', body: JSON.stringify(payload) }),
+  updateCategory: (id: string, payload: Pick<TaskCategory, 'name' | 'color'>) =>
+    request<TaskCategory>(`/api/categories/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  deleteCategory: (id: string) =>
+    request<{ removedId: string; replacementCategoryId: string; reassignedTasks: number }>(`/api/categories/${id}`, {
+      method: 'DELETE',
+    }),
   tasks: () => request<CrawlerTask[]>('/api/tasks'),
   createTask: (payload: TaskPayload) =>
     request<CrawlerTask>('/api/tasks', { method: 'POST', body: JSON.stringify(payload) }),

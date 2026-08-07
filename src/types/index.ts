@@ -8,8 +8,15 @@ export type RunStatus =
   | 'stopped'
   | 'interrupted'
 
+export interface TaskCategory {
+  id: string
+  name: string
+  color: string
+}
+
 export interface CrawlerTask {
   id: string
+  categoryId: string
   name: string
   url: string
   scriptPath: string
@@ -35,6 +42,7 @@ export interface RunRecord {
   id: string
   taskId: string
   taskName: string
+  categoryId: string
   trigger: 'manual' | 'schedule' | 'run-all'
   status: RunStatus
   queuedAt: string

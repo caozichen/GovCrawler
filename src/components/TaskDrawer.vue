@@ -3,11 +3,12 @@ import { computed, reactive, ref, watch } from 'vue'
 import { Check, FileCode2, FolderOpen, LoaderCircle, Save, X } from '@lucide/vue'
 import { api, ApiError } from '../services/api'
 import { toast } from '../services/toast'
-import type { AppSettings, CrawlerTask, TaskPayload } from '../types'
+import type { AppSettings, CrawlerTask, TaskCategory, TaskPayload } from '../types'
 
 const props = defineProps<{
   open: boolean
   task: CrawlerTask | null
+  categories: TaskCategory[]
   settings: AppSettings | null
   saving: boolean
 }>()
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const form = reactive<TaskPayload>({
+  categoryId: '',
   name: '',
   url: '',
   scriptPath: '',
@@ -38,6 +40,7 @@ watch(
   () => {
     if (!props.open) return
     Object.assign(form, {
+      categoryId: props.task?.categoryId || props.categories[0]?.id || '',
       name: props.task?.name || '',
       url: props.task?.url || '',
       scriptPath: props.task?.scriptPath || '',
@@ -79,8 +82,8 @@ async function choosePath(field: 'scriptPath' | 'pythonPath') {
 
 function buildPayload(): TaskPayload | null {
   errorMessage.value = ''
-  if (!form.name.trim() || !form.url.trim() || !form.scriptPath.trim()) {
-    errorMessage.value = '请填写任务名称、网址和爬虫文件。'
+  if (!form.categoryId || !form.name.trim() || !form.url.trim() || !form.scriptPath.trim()) {
+    errorMessage.value = '请选择任务分类，并填写任务名称、网址和爬虫文件。'
     return null
   }
   try {
@@ -120,6 +123,14 @@ function buildPayload(): TaskPayload | null {
         <form class="drawer__body" @submit.prevent="submit">
           <section class="form-section">
             <div class="form-section__title"><span>01</span> 基础配置</div>
+            <label class="field">
+              <span>所属分类</span>
+              <select v-model="form.categoryId">
+                <option v-for="category in categories" :key="category.id" :value="category.id">
+                  {{ category.name }}
+                </option>
+              </select>
+            </label>
             <label class="field">
               <span>任务名称</span>
               <input v-model="form.name" placeholder="例如：行业资讯采集" maxlength="80" />

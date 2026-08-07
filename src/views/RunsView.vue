@@ -8,20 +8,24 @@ import { api, ApiError } from '../services/api'
 import { toast } from '../services/toast'
 import { useConsoleStore } from '../stores/console'
 import type { RunRecord, RunStatus } from '../types'
+import CategoryBadge from '../components/CategoryBadge.vue'
 
 const consoleStore = useConsoleStore()
-const { runs } = storeToRefs(consoleStore)
+const { runs, categories } = storeToRefs(consoleStore)
 const query = ref('')
+const categoryFilter = ref('all')
 const statusFilter = ref<'all' | RunStatus>('all')
 const selectedRunId = ref('')
 const openingRunId = ref('')
 const selectedRun = computed(() => runs.value.find((run) => run.id === selectedRunId.value) || null)
+const categoryById = computed(() => new Map(categories.value.map((category) => [category.id, category])))
 
 const filteredRuns = computed(() => {
   const keyword = query.value.trim().toLowerCase()
   return runs.value.filter((run) => {
     const matchesKeyword = !keyword || run.taskName.toLowerCase().includes(keyword) || run.outputDir.toLowerCase().includes(keyword)
-    return matchesKeyword && (statusFilter.value === 'all' || run.status === statusFilter.value)
+    const matchesCategory = categoryFilter.value === 'all' || run.categoryId === categoryFilter.value
+    return matchesKeyword && matchesCategory && (statusFilter.value === 'all' || run.status === statusFilter.value)
   })
 })
 
@@ -78,6 +82,13 @@ function triggerLabel(trigger: RunRecord['trigger']) {
       </label>
       <label class="select-shell">
         <Filter :size="16" />
+        <select v-model="categoryFilter" aria-label="按分类筛选运行记录">
+          <option value="all">全部分类</option>
+          <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
+        </select>
+      </label>
+      <label class="select-shell">
+        <Filter :size="16" />
         <select v-model="statusFilter">
           <option value="all">全部结果</option>
           <option value="running">运行中</option>
@@ -95,6 +106,7 @@ function triggerLabel(trigger: RunRecord['trigger']) {
           <thead>
             <tr>
               <th>开始时间</th>
+              <th>分类</th>
               <th>任务</th>
               <th>触发方式</th>
               <th>状态</th>
@@ -107,6 +119,7 @@ function triggerLabel(trigger: RunRecord['trigger']) {
           <tbody>
             <tr v-for="run in filteredRuns" :key="run.id" :class="{ 'row--failed': ['failed', 'timed_out', 'interrupted'].includes(run.status) }">
               <td><span class="time-cell">{{ formatTime(run.startedAt || run.queuedAt) }}</span></td>
+              <td><CategoryBadge :category="categoryById.get(run.categoryId)" /></td>
               <td><strong>{{ run.taskName }}</strong></td>
               <td><span class="trigger-chip">{{ triggerLabel(run.trigger) }}</span></td>
               <td><StatusBadge :status="run.status" /></td>

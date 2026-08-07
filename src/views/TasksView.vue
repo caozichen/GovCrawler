@@ -5,14 +5,18 @@ import {
   CheckCircle2,
   FileCode2,
   FileText,
+  Filter,
   LoaderCircle,
   Pencil,
   Play,
   Plus,
   Search,
   ShieldCheck,
+  Tags,
   Trash2,
 } from '@lucide/vue'
+import CategoryBadge from '../components/CategoryBadge.vue'
+import CategoryDialog from '../components/CategoryDialog.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import TaskDetailsDrawer from '../components/TaskDetailsDrawer.vue'
@@ -23,8 +27,10 @@ import { useConsoleStore } from '../stores/console'
 import type { CrawlerTask, RunStatus, TaskPayload } from '../types'
 
 const consoleStore = useConsoleStore()
-const { tasks, runs, settings, dashboard, loading } = storeToRefs(consoleStore)
+const { tasks, categories, runs, settings, dashboard, loading } = storeToRefs(consoleStore)
 const query = ref('')
+const categoryFilter = ref('all')
+const categoryDialogOpen = ref(false)
 const drawerOpen = ref(false)
 const editingTask = ref<CrawlerTask | null>(null)
 const saving = ref(false)
@@ -38,10 +44,15 @@ const deleting = ref(false)
 
 const filteredTasks = computed(() => {
   const keyword = query.value.trim().toLowerCase()
-  return tasks.value.filter((task) =>
-    !keyword || [task.name, task.url, task.scriptPath, task.details].some((value) => value.toLowerCase().includes(keyword)),
-  )
+  return tasks.value.filter((task) => {
+    const matchesCategory = categoryFilter.value === 'all' || task.categoryId === categoryFilter.value
+    const matchesKeyword = !keyword
+      || [task.name, task.url, task.scriptPath, task.details].some((value) => value.toLowerCase().includes(keyword))
+    return matchesCategory && matchesKeyword
+  })
 })
+
+const categoryById = computed(() => new Map(categories.value.map((category) => [category.id, category])))
 
 const latestByTask = computed(() => {
   const map = new Map<string, (typeof runs.value)[number]>()
@@ -221,6 +232,16 @@ function messageOf(error: unknown): string {
         <Search :size="17" />
         <input v-model="query" type="search" placeholder="搜索任务或网址" />
       </label>
+      <label class="select-shell">
+        <Filter :size="16" />
+        <select v-model="categoryFilter" aria-label="按分类筛选任务">
+          <option value="all">全部分类</option>
+          <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
+        </select>
+      </label>
+      <button class="button button--ghost category-settings-button" type="button" @click="categoryDialogOpen = true">
+        <Tags :size="16" /> 分类配置
+      </button>
       <span class="table-toolbar__count">{{ filteredTasks.length }} TASKS</span>
     </div>
 
@@ -229,6 +250,7 @@ function messageOf(error: unknown): string {
         <table class="data-table task-table">
           <thead>
             <tr>
+              <th>分类</th>
               <th>任务 / 网址</th>
               <th>爬虫文件</th>
               <th>运行状态</th>
@@ -238,6 +260,7 @@ function messageOf(error: unknown): string {
           </thead>
           <tbody>
             <tr v-for="task in filteredTasks" :key="task.id">
+              <td><CategoryBadge :category="categoryById.get(task.categoryId)" /></td>
               <td>
                 <div class="primary-cell">
                   <strong>{{ task.name }}</strong>
@@ -304,12 +327,15 @@ function messageOf(error: unknown): string {
   <TaskDrawer
     :open="drawerOpen"
     :task="editingTask"
+    :categories="categories"
     :settings="settings"
     :saving="saving"
     @close="drawerOpen = false"
     @save="saveTask"
     @validate="validateDraft"
   />
+
+  <CategoryDialog :open="categoryDialogOpen" @close="categoryDialogOpen = false" />
 
   <TaskDetailsDrawer
     :open="detailsDrawerOpen"

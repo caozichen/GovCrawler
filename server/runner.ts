@@ -90,6 +90,7 @@ export class RunManager extends EventEmitter {
         id: randomUUID(),
         taskId: task.id,
         taskName: task.name,
+        categoryId: task.categoryId,
         trigger,
         status: 'queued',
         queuedAt,
@@ -377,6 +378,7 @@ export class RunManager extends EventEmitter {
       run,
       task: {
         id: task.id,
+        categoryId: task.categoryId,
         name: task.name,
         url: task.url,
         scriptPath: task.scriptPath,

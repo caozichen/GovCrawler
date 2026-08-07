@@ -11,6 +11,7 @@ export const pathPickerSchema = z.object({
 })
 
 export const taskInputSchema = z.object({
+  categoryId: z.string().trim().min(1, '请选择任务分类'),
   name: z.string().trim().min(1, '请输入任务名称').max(80),
   url: z.string().url('请输入有效网址').refine((value) => /^https?:\/\//i.test(value), '仅支持 HTTP/HTTPS'),
   scriptPath: z.string().trim().min(1, '请选择 Python 爬虫文件'),
@@ -27,6 +28,11 @@ export const taskInputSchema = z.object({
     )
     .optional()
     .default([]),
+})
+
+export const categoryInputSchema = z.object({
+  name: z.string().trim().min(1, '请输入分类名称').max(20, '分类名称不能超过 20 个字'),
+  color: z.string().regex(/^#[0-9a-f]{6}$/i, '请选择有效的分类颜色'),
 })
 
 export const taskDetailsSchema = z.object({

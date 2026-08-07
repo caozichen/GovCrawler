@@ -2,12 +2,25 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { getDefaultScriptDetails } from './script-details.js'
-import type { CrawlerTask, PersistedState } from './types.js'
+import type { CrawlerTask, PersistedState, TaskCategory } from './types.js'
+
+export const DEFAULT_TASK_CATEGORIES: TaskCategory[] = [
+  { id: 'municipal', name: '市级单位', color: '#3B82F6' },
+  { id: 'district', name: '区级单位', color: '#22A06B' },
+  { id: 'agency', name: '机关单位', color: '#D98620' },
+]
+
+export function inferTaskCategoryId(taskName: string): string {
+  if (/朝阳区|东城区|西城区|通州区|大兴区|海淀区|经济技术开发区/.test(taskName)) return 'district'
+  if (/人民政府门户|首都之窗|示例/.test(taskName)) return 'agency'
+  return 'municipal'
+}
 
 function createDefaultState(projectRoot: string): PersistedState {
   const now = new Date().toISOString()
   const exampleTask: CrawlerTask = {
     id: randomUUID(),
+    categoryId: 'agency',
     name: '示例网页采集',
     url: 'https://example.com',
     scriptPath: path.join(projectRoot, 'crawlers', 'example.py'),
@@ -22,7 +35,8 @@ function createDefaultState(projectRoot: string): PersistedState {
   }
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    categories: structuredClone(DEFAULT_TASK_CATEGORIES),
     tasks: [exampleTask],
     runs: [],
     settings: {
@@ -99,9 +113,20 @@ export class StateStore {
   }
 
   private normalizeState(): void {
+    if (!Array.isArray(this.state.categories) || this.state.categories.length === 0) {
+      this.state.categories = structuredClone(DEFAULT_TASK_CATEGORIES)
+    }
+    const categoryIds = new Set(this.state.categories.map((category) => category.id))
     for (const task of this.state.tasks) {
       if (typeof task.details !== 'string') task.details = getDefaultScriptDetails(task.scriptPath)
+      if (!categoryIds.has(task.categoryId)) task.categoryId = inferTaskCategoryId(task.name)
     }
+    for (const run of this.state.runs) {
+      if (categoryIds.has(run.categoryId)) continue
+      const task = this.state.tasks.find((item) => item.id === run.taskId)
+      run.categoryId = task?.categoryId || inferTaskCategoryId(run.taskName)
+    }
+    this.state.schemaVersion = 2
   }
 
   private async persist(): Promise<void> {

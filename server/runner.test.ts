@@ -12,6 +12,7 @@ test('builds a structured Python invocation without a shell command string', () 
   const root = path.resolve('project root')
   const task = {
     id: 'task-1',
+    categoryId: 'agency',
     name: 'Example',
     url: 'https://example.com?q=a b',
     scriptPath: path.join('crawlers', 'example.py'),
@@ -35,6 +36,7 @@ test('builds a structured Python invocation without a shell command string', () 
     id: 'run-1',
     taskId: task.id,
     taskName: task.name,
+    categoryId: task.categoryId,
     trigger: 'manual',
     status: 'queued',
     queuedAt: '',
