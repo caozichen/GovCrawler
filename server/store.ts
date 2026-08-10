@@ -4,6 +4,8 @@ import path from 'node:path'
 import { getDefaultScriptDetails } from './script-details.js'
 import type { CrawlerTask, PersistedState, TaskCategory } from './types.js'
 
+export const MAX_OPERATION_LOGS = 1000
+
 export const DEFAULT_TASK_CATEGORIES: TaskCategory[] = [
   { id: 'municipal', name: '市级单位', color: '#3B82F6' },
   { id: 'district', name: '区级单位', color: '#22A06B' },
@@ -35,10 +37,11 @@ function createDefaultState(projectRoot: string): PersistedState {
   }
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     categories: structuredClone(DEFAULT_TASK_CATEGORIES),
     tasks: [exampleTask],
     runs: [],
+    operationLogs: [],
     settings: {
       pythonPath: 'python',
       outputRoot: projectRoot,
@@ -92,6 +95,7 @@ export class StateStore {
       const draft = structuredClone(this.state)
       await mutator(draft)
       draft.runs = draft.runs.slice(0, 500)
+      draft.operationLogs = draft.operationLogs.slice(0, MAX_OPERATION_LOGS)
       this.state = draft
       await this.persist()
       return structuredClone(this.state)
@@ -113,6 +117,7 @@ export class StateStore {
   }
 
   private normalizeState(): void {
+    if (!Array.isArray(this.state.operationLogs)) this.state.operationLogs = []
     if (!Array.isArray(this.state.categories) || this.state.categories.length === 0) {
       this.state.categories = structuredClone(DEFAULT_TASK_CATEGORIES)
     }
@@ -126,7 +131,7 @@ export class StateStore {
       const task = this.state.tasks.find((item) => item.id === run.taskId)
       run.categoryId = task?.categoryId || inferTaskCategoryId(run.taskName)
     }
-    this.state.schemaVersion = 2
+    this.state.schemaVersion = 3
   }
 
   private async persist(): Promise<void> {

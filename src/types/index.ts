@@ -56,6 +56,29 @@ export interface RunRecord {
   errorMessage?: string
 }
 
+export type OperationAction = 'task-created' | 'task-updated' | 'task-deleted' | 'run-started' | 'run-stopped'
+export type OperationRunMode = 'single' | 'batch'
+
+export interface OperationChange {
+  field: string
+  label: string
+  before?: string
+  after?: string
+}
+
+export interface OperationLog {
+  id: string
+  operator: string
+  action: OperationAction
+  occurredAt: string
+  taskId: string
+  taskName: string
+  summary: string
+  changes: OperationChange[]
+  runId?: string
+  runMode?: OperationRunMode
+}
+
 export interface AppSettings {
   pythonPath: string
   outputRoot: string

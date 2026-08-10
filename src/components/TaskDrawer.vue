@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { ElInput, ElInputNumber, ElOption, ElSelect } from 'element-plus'
 import { Check, FileCode2, FolderOpen, LoaderCircle, Save, X } from '@lucide/vue'
 import { api, ApiError } from '../services/api'
 import { toast } from '../services/toast'
@@ -125,19 +126,17 @@ function buildPayload(): TaskPayload | null {
             <div class="form-section__title"><span>01</span> 基础配置</div>
             <label class="field">
               <span>所属分类</span>
-              <select v-model="form.categoryId">
-                <option v-for="category in categories" :key="category.id" :value="category.id">
-                  {{ category.name }}
-                </option>
-              </select>
+              <ElSelect v-model="form.categoryId" aria-label="所属分类">
+                <ElOption v-for="category in categories" :key="category.id" :label="category.name" :value="category.id" />
+              </ElSelect>
             </label>
             <label class="field">
               <span>任务名称</span>
-              <input v-model="form.name" placeholder="例如：行业资讯采集" maxlength="80" />
+              <ElInput v-model="form.name" placeholder="例如：行业资讯采集" maxlength="80" clearable />
             </label>
             <label class="field">
               <span>目标网址</span>
-              <input v-model="form.url" placeholder="https://example.com" inputmode="url" />
+              <ElInput v-model="form.url" placeholder="https://example.com" inputmode="url" clearable />
             </label>
           </section>
 
@@ -145,46 +144,48 @@ function buildPayload(): TaskPayload | null {
             <div class="form-section__title"><span>02</span> 执行配置</div>
             <label class="field">
               <span>Python 爬虫文件</span>
-              <div class="input-shell input-shell--plain">
-                <FileCode2 :size="17" />
-                <input v-model="form.scriptPath" placeholder="C:\\path\\crawler.py 或 /Users/name/crawler.py" />
-                <button
-                  class="input-action"
-                  type="button"
-                  title="选择 Python 爬虫文件"
-                  aria-label="选择 Python 爬虫文件"
-                  :disabled="Boolean(pickingPath)"
-                  @click="choosePath('scriptPath')"
-                >
-                  <LoaderCircle v-if="pickingPath === 'scriptPath'" class="loading-indicator" :size="17" />
-                  <FolderOpen v-else :size="17" />
-                </button>
-              </div>
+              <ElInput v-model="form.scriptPath" placeholder="C:\\path\\crawler.py 或 /Users/name/crawler.py">
+                <template #prefix><FileCode2 :size="17" /></template>
+                <template #suffix>
+                  <button
+                    class="input-action"
+                    type="button"
+                    title="选择 Python 爬虫文件"
+                    aria-label="选择 Python 爬虫文件"
+                    :disabled="Boolean(pickingPath)"
+                    @click="choosePath('scriptPath')"
+                  >
+                    <LoaderCircle v-if="pickingPath === 'scriptPath'" class="loading-indicator" :size="17" />
+                    <FolderOpen v-else :size="17" />
+                  </button>
+                </template>
+              </ElInput>
             </label>
             <label class="field">
               <span>Python 解释器（留空使用全局设置）</span>
-              <div class="input-shell input-shell--plain">
-                <input v-model="form.pythonPath" placeholder="例如：C:\\Python312\\python.exe 或 /usr/bin/python3" />
-                <button
-                  class="input-action"
-                  type="button"
-                  title="选择 Python 解释器"
-                  aria-label="选择 Python 解释器"
-                  :disabled="Boolean(pickingPath)"
-                  @click="choosePath('pythonPath')"
-                >
-                  <LoaderCircle v-if="pickingPath === 'pythonPath'" class="loading-indicator" :size="17" />
-                  <FolderOpen v-else :size="17" />
-                </button>
-              </div>
+              <ElInput v-model="form.pythonPath" placeholder="例如：C:\\Python312\\python.exe 或 /usr/bin/python3">
+                <template #suffix>
+                  <button
+                    class="input-action"
+                    type="button"
+                    title="选择 Python 解释器"
+                    aria-label="选择 Python 解释器"
+                    :disabled="Boolean(pickingPath)"
+                    @click="choosePath('pythonPath')"
+                  >
+                    <LoaderCircle v-if="pickingPath === 'pythonPath'" class="loading-indicator" :size="17" />
+                    <FolderOpen v-else :size="17" />
+                  </button>
+                </template>
+              </ElInput>
             </label>
             <label class="field">
               <span>超时（秒）</span>
-              <input v-model.number="form.timeoutSeconds" type="number" min="5" max="86400" />
+              <ElInputNumber v-model="form.timeoutSeconds" :min="5" :max="86400" controls-position="right" />
             </label>
             <label class="field">
               <span>额外参数（每行一个）</span>
-              <textarea v-model="extraArgsText" rows="4" placeholder="--mode&#10;full" />
+              <ElInput v-model="extraArgsText" type="textarea" :rows="4" placeholder="--mode&#10;full" />
             </label>
           </section>
 

@@ -66,11 +66,35 @@ export interface SchedulerState {
   startedAt?: string
 }
 
+export type OperationAction = 'task-created' | 'task-updated' | 'task-deleted' | 'run-started' | 'run-stopped'
+export type OperationRunMode = 'single' | 'batch'
+
+export interface OperationChange {
+  field: string
+  label: string
+  before?: string
+  after?: string
+}
+
+export interface OperationLog {
+  id: string
+  operator: string
+  action: OperationAction
+  occurredAt: string
+  taskId: string
+  taskName: string
+  summary: string
+  changes: OperationChange[]
+  runId?: string
+  runMode?: OperationRunMode
+}
+
 export interface PersistedState {
-  schemaVersion: 2
+  schemaVersion: 3
   categories: TaskCategory[]
   tasks: CrawlerTask[]
   runs: RunRecord[]
+  operationLogs: OperationLog[]
   settings: AppSettings
   scheduler: SchedulerState
 }

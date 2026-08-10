@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import 'element-plus/dist/index.css'
 import App from './App.vue'
 import { initializeTheme } from './composables/theme'
 import { router } from './router'

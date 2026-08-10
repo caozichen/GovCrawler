@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { ElInput } from 'element-plus'
 import { storeToRefs } from 'pinia'
 import { Check, Palette, Pencil, Plus, Save, Tags, Trash2, X } from '@lucide/vue'
 import { ApiError } from '../services/api'
@@ -121,10 +122,9 @@ function messageOf(error: unknown): string {
           <form class="category-editor" @submit.prevent="submit">
             <label class="field">
               <span>分类名称</span>
-              <div class="input-shell input-shell--plain">
-                <Tags :size="16" />
-                <input v-model="name" maxlength="20" placeholder="输入分类名称" />
-              </div>
+              <ElInput v-model="name" maxlength="20" placeholder="输入分类名称" clearable>
+                <template #prefix><Tags :size="16" /></template>
+              </ElInput>
             </label>
             <label class="field">
               <span>标签颜色</span>

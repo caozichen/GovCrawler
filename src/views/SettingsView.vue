@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
+import { ElInput, ElInputNumber } from 'element-plus'
 import { storeToRefs } from 'pinia'
 import { CheckCircle2, Cpu, Database, FolderOpen, FolderOutput, LoaderCircle, Save, ShieldCheck, XCircle } from '@lucide/vue'
 import { api, ApiError } from '../services/api'
@@ -126,29 +127,30 @@ function messageOf(error: unknown): string {
         <div class="settings-form">
           <label class="field">
             <span>默认 Python 解释器</span>
-            <div class="input-shell input-shell--plain">
-              <input v-model="form.pythonPath" placeholder="python 或 D:\\Python312\\python.exe" />
-              <button
-                class="input-action"
-                type="button"
-                title="选择默认 Python 解释器"
-                aria-label="选择默认 Python 解释器"
-                :disabled="Boolean(pickingPath)"
-                @click="choosePath('pythonPath')"
-              >
-                <LoaderCircle v-if="pickingPath === 'pythonPath'" class="loading-indicator" :size="17" />
-                <FolderOpen v-else :size="17" />
-              </button>
-            </div>
+            <ElInput v-model="form.pythonPath" placeholder="python 或 D:\\Python312\\python.exe">
+              <template #suffix>
+                <button
+                  class="input-action"
+                  type="button"
+                  title="选择默认 Python 解释器"
+                  aria-label="选择默认 Python 解释器"
+                  :disabled="Boolean(pickingPath)"
+                  @click="choosePath('pythonPath')"
+                >
+                  <LoaderCircle v-if="pickingPath === 'pythonPath'" class="loading-indicator" :size="17" />
+                  <FolderOpen v-else :size="17" />
+                </button>
+              </template>
+            </ElInput>
           </label>
           <div class="field-grid">
             <label class="field">
               <span>最大并发数</span>
-              <input v-model.number="form.maxConcurrency" type="number" min="1" max="8" />
+              <ElInputNumber v-model="form.maxConcurrency" :min="1" :max="8" controls-position="right" />
             </label>
             <label class="field">
               <span>默认超时（秒）</span>
-              <input v-model.number="form.defaultTimeoutSeconds" type="number" min="5" max="86400" />
+              <ElInputNumber v-model="form.defaultTimeoutSeconds" :min="5" :max="86400" controls-position="right" />
             </label>
           </div>
         </div>
@@ -165,20 +167,21 @@ function messageOf(error: unknown): string {
         <div class="settings-form">
           <label class="field">
             <span>输出根目录</span>
-            <div class="input-shell input-shell--plain">
-              <input v-model="form.outputRoot" placeholder="D:\\CursorCode\\pa" />
-              <button
-                class="input-action"
-                type="button"
-                title="选择输出根目录"
-                aria-label="选择输出根目录"
-                :disabled="Boolean(pickingPath)"
-                @click="choosePath('outputRoot')"
-              >
-                <LoaderCircle v-if="pickingPath === 'outputRoot'" class="loading-indicator" :size="17" />
-                <FolderOpen v-else :size="17" />
-              </button>
-            </div>
+            <ElInput v-model="form.outputRoot" placeholder="D:\\CursorCode\\pa">
+              <template #suffix>
+                <button
+                  class="input-action"
+                  type="button"
+                  title="选择输出根目录"
+                  aria-label="选择输出根目录"
+                  :disabled="Boolean(pickingPath)"
+                  @click="choosePath('outputRoot')"
+                >
+                  <LoaderCircle v-if="pickingPath === 'outputRoot'" class="loading-indicator" :size="17" />
+                  <FolderOpen v-else :size="17" />
+                </button>
+              </template>
+            </ElInput>
           </label>
           <div class="directory-preview">
             <Database :size="17" />
@@ -186,7 +189,7 @@ function messageOf(error: unknown): string {
           </div>
           <label class="field field--compact">
             <span>历史保留天数</span>
-            <input v-model.number="form.retentionDays" type="number" min="1" max="3650" />
+            <ElInputNumber v-model="form.retentionDays" :min="1" :max="3650" controls-position="right" />
           </label>
         </div>
       </section>

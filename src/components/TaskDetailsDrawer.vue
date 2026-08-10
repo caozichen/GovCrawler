@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { ElInput } from 'element-plus'
 import { FileText, Save, X } from '@lucide/vue'
 import type { CrawlerTask } from '../types'
 
@@ -54,11 +55,12 @@ function submit() {
             <div class="form-section__title"><FileText :size="15" /> 脚本详情</div>
             <label class="field">
               <span>功能、覆盖范围、核心逻辑、使用方法与注意事项</span>
-              <textarea
+              <ElInput
                 v-model="details"
+                type="textarea"
                 class="details-editor__textarea"
                 maxlength="500"
-                rows="16"
+                :rows="16"
                 placeholder="填写简短明确的脚本详情"
                 autofocus
               />

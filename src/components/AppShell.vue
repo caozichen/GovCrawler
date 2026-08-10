@@ -5,6 +5,7 @@ import {
   Activity,
   Bot,
   ChevronRight,
+  ClipboardList,
   Clock3,
   History,
   LogOut,
@@ -30,6 +31,7 @@ let poller: number | undefined
 const pageTitle = computed(() => {
   if (route.name === 'runs') return '运行历史'
   if (route.name === 'settings') return '系统设置'
+  if (route.name === 'operations') return '操作日志'
   return '任务控制台'
 })
 
@@ -116,6 +118,11 @@ function messageOf(error: unknown): string {
         <RouterLink :to="{ name: 'settings' }" title="系统设置" aria-label="系统设置">
           <Settings :size="18" />
           <span>系统设置</span>
+          <ChevronRight :size="15" class="side-nav__chevron" />
+        </RouterLink>
+        <RouterLink :to="{ name: 'operations' }" title="操作日志" aria-label="操作日志">
+          <ClipboardList :size="18" />
+          <span>操作日志</span>
           <ChevronRight :size="15" class="side-nav__chevron" />
         </RouterLink>
       </nav>

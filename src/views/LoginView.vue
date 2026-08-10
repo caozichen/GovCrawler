@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { ElInput } from 'element-plus'
 import { useRouter } from 'vue-router'
-import { Bot, Eye, EyeOff, LockKeyhole, LogIn, ShieldCheck, UserRound } from '@lucide/vue'
+import { Bot, LockKeyhole, LogIn, ShieldCheck, UserRound } from '@lucide/vue'
 import { ApiError } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import ThemeToggle from '../components/ThemeToggle.vue'
@@ -10,7 +11,6 @@ const auth = useAuthStore()
 const router = useRouter()
 const username = ref('admin')
 const password = ref('')
-const showPassword = ref(false)
 const errorMessage = ref('')
 
 async function submit() {
@@ -45,28 +45,23 @@ async function submit() {
       <form class="login-form" @submit.prevent="submit">
         <label class="field">
           <span>用户名</span>
-          <div class="input-shell">
-            <UserRound :size="18" />
-            <input v-model="username" name="username" autocomplete="username" placeholder="用户名" required />
-          </div>
+          <ElInput v-model="username" name="username" autocomplete="username" placeholder="用户名" required clearable>
+            <template #prefix><UserRound :size="18" /></template>
+          </ElInput>
         </label>
         <label class="field">
           <span>密码</span>
-          <div class="input-shell">
-            <LockKeyhole :size="18" />
-            <input
-              v-model="password"
-              name="password"
-              :type="showPassword ? 'text' : 'password'"
-              autocomplete="current-password"
-              placeholder="密码"
-              required
-            />
-            <button class="input-action" type="button" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click="showPassword = !showPassword">
-              <EyeOff v-if="showPassword" :size="17" />
-              <Eye v-else :size="17" />
-            </button>
-          </div>
+          <ElInput
+            v-model="password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="密码"
+            required
+            show-password
+          >
+            <template #prefix><LockKeyhole :size="18" /></template>
+          </ElInput>
         </label>
 
         <p v-if="errorMessage" class="form-error" role="alert">{{ errorMessage }}</p>

@@ -20,6 +20,7 @@ export const useConsoleStore = defineStore('console', {
     dashboard: emptyDashboard,
     loading: false,
     runSubmissionBusy: false,
+    stopSubmissionBusy: false,
   }),
   actions: {
     async refresh(silent = false) {
@@ -82,7 +83,7 @@ export const useConsoleStore = defineStore('console', {
       if (this.runSubmissionBusy) return null
       this.runSubmissionBusy = true
       try {
-        const results = await Promise.allSettled(ids.map((id) => api.runTask(id)))
+        const results = await Promise.allSettled(ids.map((id) => api.runTask(id, 'batch')))
         await this.refresh(true)
         return results
       } finally {
@@ -109,8 +110,26 @@ export const useConsoleStore = defineStore('console', {
       await this.refresh(true)
     },
     async stopRun(id: string) {
-      await api.stopRun(id)
-      await this.refresh(true)
+      if (this.stopSubmissionBusy) return false
+      this.stopSubmissionBusy = true
+      try {
+        await api.stopRun(id)
+        await this.refresh(true)
+        return true
+      } finally {
+        this.stopSubmissionBusy = false
+      }
+    },
+    async stopRuns(ids: string[]) {
+      if (this.stopSubmissionBusy) return null
+      this.stopSubmissionBusy = true
+      try {
+        const results = await Promise.allSettled(ids.map((id) => api.stopRun(id)))
+        await this.refresh(true)
+        return results
+      } finally {
+        this.stopSubmissionBusy = false
+      }
     },
   },
 })

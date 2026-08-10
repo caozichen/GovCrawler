@@ -5,6 +5,7 @@ import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { ZodError } from 'zod'
+import { createRunStoppedOperation, createTaskOperation } from './audit.js'
 import { AuthService } from './auth.js'
 import { AppError } from './errors.js'
 import { openOutputDirectory, revealFileInDirectory } from './open-directory.js'
@@ -15,7 +16,15 @@ import { getDefaultScriptDetails } from './script-details.js'
 import { StateStore } from './store.js'
 import type { CrawlerTask, TaskCategory, TaskInput } from './types.js'
 import { pathExists } from './utils.js'
-import { categoryInputSchema, loginSchema, pathPickerSchema, settingsSchema, taskDetailsSchema, taskInputSchema } from './validation.js'
+import {
+  categoryInputSchema,
+  loginSchema,
+  pathPickerSchema,
+  runTaskSchema,
+  settingsSchema,
+  taskDetailsSchema,
+  taskInputSchema,
+} from './validation.js'
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.resolve(process.env.PA_PROJECT_ROOT || path.join(moduleDirectory, '..'))
@@ -186,6 +195,7 @@ app.post(
   '/api/tasks',
   asyncRoute(async (request, response) => {
     const input = taskInputSchema.parse(request.body) as TaskInput
+    const operator = auth.currentUser(request).username
     if (!store.snapshot().categories.some((category) => category.id === input.categoryId)) {
       throw new AppError(422, 'CATEGORY_NOT_FOUND', '请选择有效的任务分类。')
     }
@@ -201,6 +211,13 @@ app.post(
     }
     await store.update((draft) => {
       draft.tasks.push(task)
+      draft.operationLogs.unshift(createTaskOperation({
+        action: 'task-created',
+        operator,
+        after: task,
+        categories: draft.categories,
+        occurredAt: now,
+      }))
     })
     await scheduler.refreshTask(task.id)
     response.status(201).json({ ok: true, data: task })
@@ -211,16 +228,27 @@ app.patch(
   '/api/tasks/:id/details',
   asyncRoute(async (request, response) => {
     const { details } = taskDetailsSchema.parse(request.body)
-    let updated = false
+    const operator = auth.currentUser(request).username
+    let updatedTask: CrawlerTask | undefined
     await store.update((draft) => {
       const task = draft.tasks.find((item) => item.id === request.params.id)
       if (!task) return
+      const before = structuredClone(task)
       task.details = details
-      task.updatedAt = new Date().toISOString()
-      updated = true
+      const occurredAt = new Date().toISOString()
+      task.updatedAt = occurredAt
+      updatedTask = structuredClone(task)
+      draft.operationLogs.unshift(createTaskOperation({
+        action: 'task-updated',
+        operator,
+        before,
+        after: task,
+        categories: draft.categories,
+        occurredAt,
+      }))
     })
-    if (!updated) throw new AppError(404, 'TASK_NOT_FOUND', '没有找到这个任务。')
-    response.json({ ok: true, data: store.snapshot().tasks.find((item) => item.id === request.params.id) })
+    if (!updatedTask) throw new AppError(404, 'TASK_NOT_FOUND', '没有找到这个任务。')
+    response.json({ ok: true, data: updatedTask })
   }),
 )
 
@@ -228,38 +256,58 @@ app.patch(
   '/api/tasks/:id',
   asyncRoute(async (request, response) => {
     const input = taskInputSchema.parse(request.body) as TaskInput
+    const operator = auth.currentUser(request).username
     if (!store.snapshot().categories.some((category) => category.id === input.categoryId)) {
       throw new AppError(422, 'CATEGORY_NOT_FOUND', '请选择有效的任务分类。')
     }
-    let updated = false
+    let updatedTask: CrawlerTask | undefined
     await store.update((draft) => {
       const task = draft.tasks.find((item) => item.id === request.params.id)
       if (!task) return
-      Object.assign(task, input, { extraArgs: input.extraArgs || [], updatedAt: new Date().toISOString() })
+      const before = structuredClone(task)
+      const occurredAt = new Date().toISOString()
+      Object.assign(task, input, { extraArgs: input.extraArgs || [], updatedAt: occurredAt })
       for (const run of draft.runs) if (run.taskId === task.id) run.categoryId = input.categoryId
-      updated = true
+      updatedTask = structuredClone(task)
+      draft.operationLogs.unshift(createTaskOperation({
+        action: 'task-updated',
+        operator,
+        before,
+        after: task,
+        categories: draft.categories,
+        occurredAt,
+      }))
     })
-    if (!updated) throw new AppError(404, 'TASK_NOT_FOUND', '没有找到这个任务。')
+    if (!updatedTask) throw new AppError(404, 'TASK_NOT_FOUND', '没有找到这个任务。')
     await scheduler.refreshTask(request.params.id)
-    response.json({ ok: true, data: store.snapshot().tasks.find((item) => item.id === request.params.id) })
+    response.json({ ok: true, data: updatedTask })
   }),
 )
 
 app.delete(
   '/api/tasks/:id',
   asyncRoute(async (request, response) => {
+    const operator = auth.currentUser(request).username
     if (runner.isTaskBusy(request.params.id)) {
       throw new AppError(409, 'TASK_IS_ACTIVE', '任务运行中，不能删除。')
     }
-    let removed = false
+    let removedTask: CrawlerTask | undefined
     await store.update((draft) => {
       const index = draft.tasks.findIndex((item) => item.id === request.params.id)
       if (index >= 0) {
+        const task = draft.tasks[index]
+        if (!task) return
+        removedTask = structuredClone(task)
         draft.tasks.splice(index, 1)
-        removed = true
+        draft.operationLogs.unshift(createTaskOperation({
+          action: 'task-deleted',
+          operator,
+          before: task,
+          categories: draft.categories,
+        }))
       }
     })
-    if (!removed) throw new AppError(404, 'TASK_NOT_FOUND', '没有找到这个任务。')
+    if (!removedTask) throw new AppError(404, 'TASK_NOT_FOUND', '没有找到这个任务。')
     await scheduler.refreshTask(request.params.id)
     response.json({ ok: true, data: null })
   }),
@@ -311,20 +359,27 @@ app.post(
 app.post(
   '/api/tasks/:id/run',
   asyncRoute(async (request, response) => {
-    const run = await runner.enqueue(request.params.id, 'manual')
+    const { mode } = runTaskSchema.parse(request.body ?? {})
+    const operator = auth.currentUser(request).username
+    const run = await runner.enqueue(
+      request.params.id,
+      mode === 'batch' ? 'run-all' : 'manual',
+      { operator, mode },
+    )
     response.status(202).json({ ok: true, data: run })
   }),
 )
 
 app.post(
   '/api/tasks/run-all',
-  asyncRoute(async (_request, response) => {
+  asyncRoute(async (request, response) => {
     const tasks = store.snapshot().tasks
+    const operator = auth.currentUser(request).username
     const accepted: string[] = []
     const skipped: string[] = []
     for (const task of tasks) {
       try {
-        accepted.push((await runner.enqueue(task.id, 'run-all')).id)
+        accepted.push((await runner.enqueue(task.id, 'run-all', { operator, mode: 'batch' })).id)
       } catch (error) {
         if (error instanceof AppError && error.status === 409) skipped.push(task.id)
         else throw error
@@ -336,6 +391,10 @@ app.post(
 
 app.get('/api/runs', (_request, response) => {
   response.json({ ok: true, data: store.snapshot().runs })
+})
+
+app.get('/api/operation-logs', (_request, response) => {
+  response.json({ ok: true, data: store.snapshot().operationLogs })
 })
 
 app.get('/api/runs/:id', (request, response, next) => {
@@ -358,7 +417,16 @@ app.get(
 app.post(
   '/api/runs/:id/stop',
   asyncRoute(async (request, response) => {
+    const run = store.snapshot().runs.find((item) => item.id === request.params.id)
+    if (!run) throw new AppError(404, 'RUN_NOT_FOUND', '没有找到这条运行记录。')
+    const shouldRecord = ['queued', 'running'].includes(run.status)
+    const operator = auth.currentUser(request).username
     await runner.stop(request.params.id)
+    if (shouldRecord) {
+      await store.update((draft) => {
+        draft.operationLogs.unshift(createRunStoppedOperation({ operator, run }))
+      })
+    }
     response.status(202).json({ ok: true, data: null })
   }),
 )

@@ -3,6 +3,7 @@ import LoginView from './views/LoginView.vue'
 import TasksView from './views/TasksView.vue'
 import RunsView from './views/RunsView.vue'
 import SettingsView from './views/SettingsView.vue'
+import OperationsView from './views/OperationsView.vue'
 import AppShell from './components/AppShell.vue'
 import { useAuthStore } from './stores/auth'
 
@@ -18,6 +19,7 @@ export const router = createRouter({
         { path: '', name: 'tasks', component: TasksView },
         { path: 'runs', name: 'runs', component: RunsView },
         { path: 'settings', name: 'settings', component: SettingsView },
+        { path: 'operations', name: 'operations', component: OperationsView },
       ],
     },
   ],

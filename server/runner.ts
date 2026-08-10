@@ -4,9 +4,10 @@ import { createReadStream, createWriteStream } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { spawn, type ChildProcess } from 'node:child_process'
+import { createRunStartedOperation } from './audit.js'
 import { AppError } from './errors.js'
 import { StateStore } from './store.js'
-import type { AppSettings, CrawlerTask, RunRecord, RunStatus, RunTrigger } from './types.js'
+import type { AppSettings, CrawlerTask, OperationRunMode, RunRecord, RunStatus, RunTrigger } from './types.js'
 import { allocateRunDirectory, pathExists } from './utils.js'
 
 interface QueuedItem {
@@ -28,6 +29,11 @@ export interface SpawnSpec {
   command: string
   args: string[]
   cwd: string
+}
+
+interface RunAuditContext {
+  operator: string
+  mode: OperationRunMode
 }
 
 export function buildSpawnSpec(
@@ -72,7 +78,7 @@ export class RunManager extends EventEmitter {
     return this.busyTaskIds.has(taskId)
   }
 
-  async enqueue(taskId: string, trigger: RunTrigger): Promise<RunRecord> {
+  async enqueue(taskId: string, trigger: RunTrigger, audit?: RunAuditContext): Promise<RunRecord> {
     const state = this.store.snapshot()
     const task = state.tasks.find((item) => item.id === taskId)
     if (!task) throw new AppError(404, 'TASK_NOT_FOUND', '没有找到这个任务。')
@@ -103,6 +109,7 @@ export class RunManager extends EventEmitter {
       ])
       await this.store.update((draft) => {
         draft.runs.unshift(run)
+        if (audit) draft.operationLogs.unshift(createRunStartedOperation({ ...audit, run }))
       })
       this.queued.push({ task: structuredClone(task), run: structuredClone(run) })
       this.requestPump()

@@ -13,8 +13,9 @@
     "start": "node dist-server/index.js"
   },
   "dependencies": {
-    "express": "^4.21.2",
     "@lucide/vue": "^1.28.0",
+    "element-plus": "^2.14.4",
+    "express": "^4.21.2",
     "pinia": "^3.0.0",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0",

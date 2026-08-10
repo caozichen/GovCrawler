@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { ElInput, ElOption, ElSelect } from 'element-plus'
 import {
   CheckCircle2,
   FileCode2,
@@ -48,7 +49,7 @@ const deleting = ref(false)
 const selectedTaskIds = ref(new Set<string>())
 const pendingRunTaskIds = ref(new Set<string>())
 const pendingStopTaskIds = ref(new Set<string>())
-const bulkAction = ref<'run' | 'validate' | 'delete' | null>(null)
+const bulkAction = ref<'run' | 'stop' | 'validate' | 'delete' | null>(null)
 const bulkDeleteOpen = ref(false)
 
 const filteredTasks = computed(() => {
@@ -70,7 +71,11 @@ const allVisibleSelected = computed(() => filteredTasks.value.length > 0 && sele
 const someVisibleSelected = computed(() => selectedVisibleCount.value > 0 && !allVisibleSelected.value)
 const runnableSelectedTasks = computed(() => selectedTasks.value.filter((task) => !isTaskOperationLocked(task)))
 const lockedSelectedCount = computed(() => selectedTasks.value.filter((task) => isTaskOperationLocked(task)).length)
-const bulkActionBusy = computed(() => bulkAction.value !== null || consoleStore.runSubmissionBusy)
+const bulkActionBusy = computed(() => (
+  bulkAction.value !== null
+  || consoleStore.runSubmissionBusy
+  || consoleStore.stopSubmissionBusy
+))
 
 watch([query, categoryFilter], () => {
   selectedTaskIds.value = new Set()
@@ -92,6 +97,12 @@ const latestByTask = computed(() => {
   return map
 })
 
+const stoppableSelectedRuns = computed(() => selectedTasks.value.flatMap((task) => {
+  const run = latestByTask.value.get(task.id)
+  if (!run || !['queued', 'running'].includes(run.status) || pendingStopTaskIds.value.has(task.id)) return []
+  return [{ task, run }]
+}))
+
 function runtimeStatus(task: CrawlerTask): RunStatus | 'idle' {
   return latestByTask.value.get(task.id)?.status || 'idle'
 }
@@ -107,7 +118,9 @@ function isTaskOperationLocked(task: CrawlerTask): boolean {
 }
 
 function canStopTask(task: CrawlerTask): boolean {
-  return ['queued', 'running'].includes(runtimeStatus(task)) && !pendingStopTaskIds.value.has(task.id)
+  return !bulkActionBusy.value
+    && ['queued', 'running'].includes(runtimeStatus(task))
+    && !pendingStopTaskIds.value.has(task.id)
 }
 
 function updatePendingTask(setRef: typeof pendingRunTaskIds, id: string, pending: boolean) {
@@ -224,6 +237,29 @@ async function runSelectedTasks() {
   }
 }
 
+async function stopSelectedTasks() {
+  if (bulkActionBusy.value || stoppableSelectedRuns.value.length === 0) return
+  const targets = [...stoppableSelectedRuns.value]
+  const skippedCount = selectedCount.value - targets.length
+  for (const { task } of targets) updatePendingTask(pendingStopTaskIds, task.id, true)
+  bulkAction.value = 'stop'
+  try {
+    const results = await consoleStore.stopRuns(targets.map(({ run }) => run.id))
+    if (!results) return
+    const stoppedCount = results.filter((result) => result.status === 'fulfilled').length
+    const failedCount = results.length - stoppedCount
+    const summary = `批量停止完成：已停止 ${stoppedCount} 个，跳过 ${skippedCount} 个，失败 ${failedCount} 个。`
+    if (failedCount > 0) toast.error(summary)
+    else if (skippedCount > 0) toast.info(summary)
+    else toast.success(`已停止 ${stoppedCount} 个任务。`)
+  } catch (error) {
+    toast.error(messageOf(error))
+  } finally {
+    for (const { task } of targets) updatePendingTask(pendingStopTaskIds, task.id, false)
+    bulkAction.value = null
+  }
+}
+
 async function validateSelectedTasks() {
   if (bulkActionBusy.value || selectedTasks.value.length === 0) return
   const targets = [...selectedTasks.value]
@@ -290,8 +326,8 @@ async function stopTask(task: CrawlerTask) {
   if (!run || !canStopTask(task)) return
   updatePendingTask(pendingStopTaskIds, task.id, true)
   try {
-    await consoleStore.stopRun(run.id)
-    toast.success(`已停止“${task.name}”。`)
+    const submitted = await consoleStore.stopRun(run.id)
+    if (submitted) toast.success(`已停止“${task.name}”。`)
   } catch (error) {
     toast.error(messageOf(error))
   } finally {
@@ -434,17 +470,18 @@ function messageOf(error: unknown): string {
     </div>
 
     <div class="table-toolbar">
-      <label class="search-box">
-        <Search :size="17" />
-        <input v-model="query" type="search" placeholder="搜索任务或网址" :disabled="bulkActionBusy" />
-      </label>
-      <label class="select-shell">
-        <Filter :size="16" />
-        <select v-model="categoryFilter" aria-label="按分类筛选任务" :disabled="bulkActionBusy">
-          <option value="all">全部分类</option>
-          <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
-        </select>
-      </label>
+      <div class="search-box">
+        <ElInput v-model="query" type="search" placeholder="搜索任务或网址" aria-label="搜索任务或网址" clearable :disabled="bulkActionBusy">
+          <template #prefix><Search :size="17" /></template>
+        </ElInput>
+      </div>
+      <div class="select-shell">
+        <ElSelect v-model="categoryFilter" aria-label="按分类筛选任务" :disabled="bulkActionBusy">
+          <template #prefix><Filter :size="16" /></template>
+          <ElOption label="全部分类" value="all" />
+          <ElOption v-for="category in categories" :key="category.id" :label="category.name" :value="category.id" />
+        </ElSelect>
+      </div>
       <button class="button button--ghost category-settings-button" type="button" :disabled="bulkActionBusy" @click="categoryDialogOpen = true">
         <Tags :size="16" /> 分类配置
       </button>
@@ -459,6 +496,17 @@ function messageOf(error: unknown): string {
           <LoaderCircle v-if="bulkAction === 'run'" class="loading-indicator" :size="16" />
           <Play v-else :size="16" />
           运行
+        </button>
+        <button
+          class="button button--warning bulk-action-button"
+          type="button"
+          :disabled="bulkActionBusy || stoppableSelectedRuns.length === 0"
+          :title="stoppableSelectedRuns.length > 0 ? '停止所选任务中正在排队或运行的任务' : '所选任务当前没有可停止的运行'"
+          @click="stopSelectedTasks"
+        >
+          <LoaderCircle v-if="bulkAction === 'stop'" class="loading-indicator" :size="16" />
+          <Square v-else :size="15" />
+          停止
         </button>
         <button
           class="button button--ghost bulk-action-button"

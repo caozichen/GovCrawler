@@ -1,4 +1,15 @@
-import type { AppSettings, CrawlerTask, DashboardSummary, PathPickerKind, RunRecord, TaskCategory, TaskPayload, ValidationResult } from '../types'
+import type {
+  AppSettings,
+  CrawlerTask,
+  DashboardSummary,
+  OperationLog,
+  OperationRunMode,
+  PathPickerKind,
+  RunRecord,
+  TaskCategory,
+  TaskPayload,
+  ValidationResult,
+} from '../types'
 
 interface ApiEnvelope<T> {
   ok: true
@@ -85,9 +96,11 @@ export const api = {
   validateTaskDraft: (payload: TaskPayload) =>
     request<ValidationResult>('/api/tasks/validate', { method: 'POST', body: JSON.stringify(payload) }),
   openTaskScript: (id: string) => request<null>(`/api/tasks/${id}/open-script`, { method: 'POST' }),
-  runTask: (id: string) => request<RunRecord>(`/api/tasks/${id}/run`, { method: 'POST' }),
+  runTask: (id: string, mode: OperationRunMode = 'single') =>
+    request<RunRecord>(`/api/tasks/${id}/run`, { method: 'POST', body: JSON.stringify({ mode }) }),
   runAll: () => request<{ accepted: string[]; skipped: string[] }>('/api/tasks/run-all', { method: 'POST' }),
   runs: () => request<RunRecord[]>('/api/runs'),
+  operationLogs: () => request<OperationLog[]>('/api/operation-logs'),
   log: (id: string, stream: 'stdout' | 'stderr') =>
     request<{ stream: string; text: string }>(`/api/runs/${id}/logs?stream=${stream}`),
   stopRun: (id: string) => request<null>(`/api/runs/${id}/stop`, { method: 'POST' }),
