@@ -115,3 +115,29 @@ test('allows manual execution but rejects scheduled execution for a disabled tas
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test('stops a queued task and releases its task lock', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'pa-stop-queued-'))
+  const store = new StateStore(root)
+  await store.init()
+  const manager = new RunManager(root, store)
+  const taskId = store.snapshot().tasks[0]?.id
+  assert.ok(taskId)
+  await store.update((draft) => {
+    draft.settings.maxConcurrency = 0
+  })
+
+  try {
+    const run = await manager.enqueue(taskId, 'manual')
+    assert.equal(manager.isTaskBusy(taskId), true)
+
+    await manager.stop(run.id)
+
+    const stoppedRun = store.snapshot().runs.find((item) => item.id === run.id)
+    assert.equal(stoppedRun?.status, 'stopped')
+    assert.equal(manager.isTaskBusy(taskId), false)
+  } finally {
+    await manager.stopAll()
+    await rm(root, { recursive: true, force: true })
+  }
+})

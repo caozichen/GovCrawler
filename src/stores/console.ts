@@ -19,6 +19,7 @@ export const useConsoleStore = defineStore('console', {
     settings: null as AppSettings | null,
     dashboard: emptyDashboard,
     loading: false,
+    runSubmissionBusy: false,
   }),
   actions: {
     async refresh(silent = false) {
@@ -67,13 +68,37 @@ export const useConsoleStore = defineStore('console', {
       return result
     },
     async runTask(id: string) {
-      await api.runTask(id)
-      await this.refresh(true)
+      if (this.runSubmissionBusy) return false
+      this.runSubmissionBusy = true
+      try {
+        await api.runTask(id)
+        await this.refresh(true)
+        return true
+      } finally {
+        this.runSubmissionBusy = false
+      }
+    },
+    async runTasks(ids: string[]) {
+      if (this.runSubmissionBusy) return null
+      this.runSubmissionBusy = true
+      try {
+        const results = await Promise.allSettled(ids.map((id) => api.runTask(id)))
+        await this.refresh(true)
+        return results
+      } finally {
+        this.runSubmissionBusy = false
+      }
     },
     async runAll() {
-      const result = await api.runAll()
-      await this.refresh(true)
-      return result
+      if (this.runSubmissionBusy) return null
+      this.runSubmissionBusy = true
+      try {
+        const result = await api.runAll()
+        await this.refresh(true)
+        return result
+      } finally {
+        this.runSubmissionBusy = false
+      }
     },
     async startScheduler() {
       await api.startScheduler()

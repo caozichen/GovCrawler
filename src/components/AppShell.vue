@@ -56,6 +56,7 @@ watch(
 )
 
 async function runAll() {
+  if (actionBusy.value || consoleStore.runSubmissionBusy) return
   if (consoleStore.dashboard.taskCount === 0) {
     toast.info('当前没有任务。')
     return
@@ -63,7 +64,7 @@ async function runAll() {
   actionBusy.value = true
   try {
     const result = await consoleStore.runAll()
-    toast.success(`已提交 ${result.accepted.length} 个任务。`)
+    if (result) toast.success(`已提交 ${result.accepted.length} 个任务。`)
   } catch (error) {
     toast.error(messageOf(error))
   } finally {
@@ -150,7 +151,7 @@ function messageOf(error: unknown): string {
               type="button"
               title="立即运行全部"
               aria-label="立即运行全部"
-              :disabled="actionBusy"
+              :disabled="actionBusy || consoleStore.runSubmissionBusy"
               @click="runAll"
             >
               <RefreshCw :size="17" />
