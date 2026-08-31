@@ -45,6 +45,8 @@ test('builds a structured Python invocation without a shell command string', () 
 
   const spec = buildSpawnSpec(root, task, settings, run)
   assert.equal(spec.command, 'python')
+  assert.equal(spec.args[0], path.join(root, 'crawlers', 'example.py'))
+  assert.equal(spec.cwd, path.join(root, 'crawlers'))
   assert.deepEqual(spec.args.slice(1), [
     '--url',
     task.url,

@@ -16,6 +16,7 @@ export interface TaskCategory {
 
 export interface CrawlerTask {
   id: string
+  builtinId?: string
   categoryId: string
   name: string
   url: string
@@ -35,7 +36,7 @@ export interface CrawlerTask {
 
 export type TaskPayload = Omit<
   CrawlerTask,
-  'id' | 'details' | 'createdAt' | 'updatedAt' | 'lastAttemptAt' | 'lastSuccessAt' | 'nextRunAt'
+  'id' | 'builtinId' | 'details' | 'createdAt' | 'updatedAt' | 'lastAttemptAt' | 'lastSuccessAt' | 'nextRunAt'
 >
 
 export interface RunRecord {

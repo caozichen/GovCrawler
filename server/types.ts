@@ -18,6 +18,7 @@ export interface TaskCategory {
 
 export interface CrawlerTask {
   id: string
+  builtinId?: string
   categoryId: string
   name: string
   url: string
@@ -90,7 +91,8 @@ export interface OperationLog {
 }
 
 export interface PersistedState {
-  schemaVersion: 3
+  schemaVersion: 4
+  builtinCatalogVersion: number
   categories: TaskCategory[]
   tasks: CrawlerTask[]
   runs: RunRecord[]

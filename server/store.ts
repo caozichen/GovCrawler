@@ -1,8 +1,13 @@
-import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import {
+  BUILTIN_CRAWLER_CATALOG_VERSION,
+  BUILTIN_CRAWLER_DEFINITIONS,
+  createBuiltinTask,
+  type BuiltinCrawlerDefinition,
+} from './builtin-tasks.js'
 import { getDefaultScriptDetails } from './script-details.js'
-import type { CrawlerTask, PersistedState, TaskCategory } from './types.js'
+import type { PersistedState, TaskCategory } from './types.js'
 
 export const MAX_OPERATION_LOGS = 1000
 
@@ -18,32 +23,22 @@ export function inferTaskCategoryId(taskName: string): string {
   return 'municipal'
 }
 
+export function defaultPythonCommand(platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? 'python' : 'python3'
+}
+
 function createDefaultState(projectRoot: string): PersistedState {
   const now = new Date().toISOString()
-  const exampleTask: CrawlerTask = {
-    id: randomUUID(),
-    categoryId: 'agency',
-    name: '示例网页采集',
-    url: 'https://example.com',
-    scriptPath: path.join(projectRoot, 'crawlers', 'example.py'),
-    details: getDefaultScriptDetails('example.py'),
-    pythonPath: '',
-    enabled: false,
-    intervalMinutes: 30,
-    timeoutSeconds: 120,
-    extraArgs: [],
-    createdAt: now,
-    updatedAt: now,
-  }
 
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
+    builtinCatalogVersion: BUILTIN_CRAWLER_CATALOG_VERSION,
     categories: structuredClone(DEFAULT_TASK_CATEGORIES),
-    tasks: [exampleTask],
+    tasks: BUILTIN_CRAWLER_DEFINITIONS.map((definition) => createBuiltinTask(definition, now)),
     runs: [],
     operationLogs: [],
     settings: {
-      pythonPath: 'python',
+      pythonPath: defaultPythonCommand(),
       outputRoot: projectRoot,
       maxConcurrency: 2,
       defaultTimeoutSeconds: 600,
@@ -122,16 +117,54 @@ export class StateStore {
       this.state.categories = structuredClone(DEFAULT_TASK_CATEGORIES)
     }
     const categoryIds = new Set(this.state.categories.map((category) => category.id))
+    const fallbackCategoryId = this.state.categories[0]?.id || 'municipal'
+    const catalogVersion = Number(this.state.builtinCatalogVersion) || 0
+    if (catalogVersion < BUILTIN_CRAWLER_CATALOG_VERSION) this.addMissingBuiltinTasks(categoryIds)
     for (const task of this.state.tasks) {
       if (typeof task.details !== 'string') task.details = getDefaultScriptDetails(task.scriptPath)
-      if (!categoryIds.has(task.categoryId)) task.categoryId = inferTaskCategoryId(task.name)
+      if (!categoryIds.has(task.categoryId)) {
+        const inferredCategoryId = inferTaskCategoryId(task.name)
+        task.categoryId = categoryIds.has(inferredCategoryId) ? inferredCategoryId : fallbackCategoryId
+      }
     }
     for (const run of this.state.runs) {
       if (categoryIds.has(run.categoryId)) continue
       const task = this.state.tasks.find((item) => item.id === run.taskId)
-      run.categoryId = task?.categoryId || inferTaskCategoryId(run.taskName)
+      const inferredCategoryId = inferTaskCategoryId(run.taskName)
+      run.categoryId = task?.categoryId
+        || (categoryIds.has(inferredCategoryId) ? inferredCategoryId : fallbackCategoryId)
     }
-    this.state.schemaVersion = 3
+    this.state.builtinCatalogVersion = BUILTIN_CRAWLER_CATALOG_VERSION
+    this.state.schemaVersion = 4
+  }
+
+  private addMissingBuiltinTasks(categoryIds: ReadonlySet<string>): void {
+    const now = new Date().toISOString()
+    const fallbackCategoryId = this.state.categories[0]?.id || 'municipal'
+
+    for (const definition of BUILTIN_CRAWLER_DEFINITIONS) {
+      const pathMatch = this.state.tasks.find((task) => this.matchesBuiltinPath(task.scriptPath, definition))
+      const existing = this.state.tasks.find(
+        (task) => task.builtinId === definition.id || task.id === definition.id,
+      ) || pathMatch
+
+      if (existing) {
+        existing.builtinId = definition.id
+        if (existing === pathMatch) existing.scriptPath = definition.scriptPath
+        continue
+      }
+
+      const categoryId = categoryIds.has(definition.categoryId) ? definition.categoryId : fallbackCategoryId
+      this.state.tasks.push(createBuiltinTask(definition, now, categoryId))
+    }
+  }
+
+  private matchesBuiltinPath(scriptPath: string, definition: BuiltinCrawlerDefinition): boolean {
+    const candidate = path.resolve(this.projectRoot, scriptPath.replace(/[\\/]/g, path.sep))
+    const expected = path.resolve(this.projectRoot, definition.scriptPath.replaceAll('/', path.sep))
+    return process.platform === 'win32'
+      ? candidate.toLowerCase() === expected.toLowerCase()
+      : candidate === expected
   }
 
   private async persist(): Promise<void> {
