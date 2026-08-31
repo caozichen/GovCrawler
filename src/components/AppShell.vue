@@ -97,7 +97,7 @@ function messageOf(error: unknown): string {
         <div class="brand-mark" title="PA Crawler" aria-label="PA Crawler"><Bot :size="21" /></div>
         <div>
           <strong>PA Crawler</strong>
-          <span>LOCAL OPS</span>
+          <span>任务管理平台</span>
         </div>
         <button class="icon-button sidebar__close" type="button" aria-label="关闭菜单" @click="menuOpen = false">
           <X :size="19" />
@@ -105,16 +105,19 @@ function messageOf(error: unknown): string {
       </div>
 
       <nav class="side-nav" aria-label="主导航">
+        <span class="side-nav__section">工作台</span>
         <RouterLink :to="{ name: 'tasks' }" title="任务控制台" aria-label="任务控制台">
           <Activity :size="18" />
           <span>任务控制台</span>
           <ChevronRight :size="15" class="side-nav__chevron" />
         </RouterLink>
+        <span class="side-nav__section">运行管理</span>
         <RouterLink :to="{ name: 'runs' }" title="运行历史" aria-label="运行历史">
           <History :size="18" />
           <span>运行历史</span>
           <ChevronRight :size="15" class="side-nav__chevron" />
         </RouterLink>
+        <span class="side-nav__section">系统</span>
         <RouterLink :to="{ name: 'settings' }" title="系统设置" aria-label="系统设置">
           <Settings :size="18" />
           <span>系统设置</span>
@@ -147,7 +150,7 @@ function messageOf(error: unknown): string {
               <Menu :size="20" />
             </button>
             <div>
-              <span class="eyebrow">CONTROL CENTER</span>
+              <span class="eyebrow">本地工作台</span>
               <h1>{{ pageTitle }}</h1>
             </div>
           </div>

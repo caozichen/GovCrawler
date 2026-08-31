@@ -32,13 +32,13 @@ async function submit() {
       <div class="login-brand">
         <div class="brand-mark brand-mark--large"><Bot :size="27" /></div>
         <div>
-          <span class="eyebrow">LOCAL OPERATIONS</span>
+          <span class="eyebrow">本地任务管理</span>
           <strong>PA Crawler</strong>
         </div>
       </div>
 
       <div class="login-heading">
-        <div class="login-heading__status"><ShieldCheck :size="15" /> LOCAL ACCESS</div>
+        <div class="login-heading__status"><ShieldCheck :size="15" /> 仅限本机访问</div>
         <h1 id="login-title">登录控制台</h1>
       </div>
 
@@ -72,7 +72,7 @@ async function submit() {
       </form>
 
       <footer class="login-footer">
-        <span><span class="live-dot live-dot--active" /> API READY</span>
+        <span><span class="live-dot live-dot--active" /> 服务在线</span>
         <span>v0.1.0</span>
       </footer>
     </section>

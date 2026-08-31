@@ -3,11 +3,14 @@ import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { ElInput, ElOption, ElSelect } from 'element-plus'
 import {
+  Activity,
+  AlertCircle,
   CheckCircle2,
   FileCode2,
   FileText,
   Filter,
   LoaderCircle,
+  ListChecks,
   Pencil,
   Play,
   Plus,
@@ -438,24 +441,36 @@ function messageOf(error: unknown): string {
   <section class="workspace-page">
     <div class="metric-strip" aria-label="任务概览">
       <div class="metric-item">
-        <span>任务总数</span>
+        <div class="metric-item__icon"><ListChecks :size="18" /></div>
+        <div class="metric-item__copy">
+          <span>任务总数</span>
+          <small>全部任务</small>
+        </div>
         <strong>{{ dashboard.taskCount }}</strong>
-        <small>ALL TASKS</small>
       </div>
       <div class="metric-item metric-item--blue">
-        <span>正在执行</span>
+        <div class="metric-item__icon"><Activity :size="18" /></div>
+        <div class="metric-item__copy">
+          <span>正在执行</span>
+          <small>排队与运行中</small>
+        </div>
         <strong>{{ dashboard.activeCount }}</strong>
-        <small>ACTIVE</small>
       </div>
       <div class="metric-item metric-item--success">
-        <span>今日成功</span>
+        <div class="metric-item__icon"><CheckCircle2 :size="18" /></div>
+        <div class="metric-item__copy">
+          <span>今日成功</span>
+          <small>今日已完成</small>
+        </div>
         <strong>{{ dashboard.successToday }}</strong>
-        <small>SUCCEEDED</small>
       </div>
       <div class="metric-item metric-item--danger">
-        <span>今日失败</span>
+        <div class="metric-item__icon"><AlertCircle :size="18" /></div>
+        <div class="metric-item__copy">
+          <span>今日失败</span>
+          <small>今日异常</small>
+        </div>
         <strong>{{ dashboard.failedToday }}</strong>
-        <small>FAILED</small>
       </div>
     </div>
 

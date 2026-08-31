@@ -13,7 +13,6 @@ const label = computed(() => (isDark.value ? '切换到浅色模式' : '切换�
     type="button"
     :title="label"
     :aria-label="label"
-    :aria-pressed="!isDark"
     @click="toggleTheme"
   >
     <Sun v-if="isDark" :size="18" />

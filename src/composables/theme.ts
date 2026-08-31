@@ -3,21 +3,22 @@ import { computed, readonly, ref } from 'vue'
 export type Theme = 'dark' | 'light'
 
 const STORAGE_KEY = 'pa-crawler-theme'
-const theme = ref<Theme>('dark')
+const theme = ref<Theme>('light')
 let initialized = false
 
 function applyTheme(value: Theme) {
   if (typeof document === 'undefined') return
   document.documentElement.dataset.theme = value
   document.documentElement.style.colorScheme = value
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', value === 'dark' ? '#111318' : '#f3f6fb')
 }
 
 function storedTheme(): Theme {
-  if (typeof window === 'undefined') return 'dark'
+  if (typeof window === 'undefined') return 'light'
   try {
-    return window.localStorage.getItem(STORAGE_KEY) === 'light' ? 'light' : 'dark'
+    return window.localStorage.getItem(STORAGE_KEY) === 'dark' ? 'dark' : 'light'
   } catch {
-    return 'dark'
+    return 'light'
   }
 }
 
