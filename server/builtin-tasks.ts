@@ -2,7 +2,7 @@ import { getDefaultScriptDetails } from './script-details.js'
 import type { CrawlerTask } from './types.js'
 
 // Increment this when adding catalog entries so existing installations import them once.
-export const BUILTIN_CRAWLER_CATALOG_VERSION = 1
+export const BUILTIN_CRAWLER_CATALOG_VERSION = 2
 
 export interface BuiltinCrawlerDefinition {
   id: string
@@ -11,6 +11,7 @@ export interface BuiltinCrawlerDefinition {
   url: string
   scriptPath: `crawlers/${string}.py`
   timeoutSeconds: number
+  intervalMinutes?: number
 }
 
 export const BUILTIN_CRAWLER_DEFINITIONS = Object.freeze([
@@ -127,6 +128,24 @@ export const BUILTIN_CRAWLER_DEFINITIONS = Object.freeze([
     timeoutSeconds: 600,
   },
   {
+    id: 'builtin-dongcheng-community-recruitment',
+    categoryId: 'district',
+    name: '北京市东城区社区工作者招聘',
+    url: 'https://www.bjdch.gov.cn/zwgk/tzgg/',
+    scriptPath: 'crawlers/dongcheng_community_recruitment.py',
+    timeoutSeconds: 1200,
+    intervalMinutes: 360,
+  },
+  {
+    id: 'builtin-chaoyang-community-recruitment',
+    categoryId: 'district',
+    name: '北京市朝阳区社区工作者招聘',
+    url: 'http://www.bjchy.gov.cn/affair/civilemployed/zhk/',
+    scriptPath: 'crawlers/chaoyang_community_recruitment.py',
+    timeoutSeconds: 1200,
+    intervalMinutes: 360,
+  },
+  {
     id: 'builtin-xicheng-recruitment',
     categoryId: 'district',
     name: '北京市西城区招聘公告',
@@ -207,7 +226,7 @@ export function createBuiltinTask(
     details: getDefaultScriptDetails(definition.scriptPath),
     pythonPath: '',
     enabled: false,
-    intervalMinutes: 30,
+    intervalMinutes: definition.intervalMinutes ?? 30,
     timeoutSeconds: definition.timeoutSeconds,
     extraArgs: [],
     createdAt: now,

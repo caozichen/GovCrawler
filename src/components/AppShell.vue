@@ -3,7 +3,6 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import {
   Activity,
-  Bot,
   ChevronRight,
   ClipboardList,
   Clock3,
@@ -19,6 +18,7 @@ import { toast } from '../services/toast'
 import { useAuthStore } from '../stores/auth'
 import { useConsoleStore } from '../stores/console'
 import ThemeToggle from './ThemeToggle.vue'
+import BrandLogo from './BrandLogo.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,7 +32,7 @@ const pageTitle = computed(() => {
   if (route.name === 'runs') return '运行历史'
   if (route.name === 'settings') return '系统设置'
   if (route.name === 'operations') return '操作日志'
-  return '任务控制台'
+  return '爬虫管理'
 })
 
 onMounted(async () => {
@@ -94,10 +94,10 @@ function messageOf(error: unknown): string {
     <div v-if="menuOpen" class="sidebar-scrim" @click="menuOpen = false" />
     <aside class="sidebar" :class="{ 'sidebar--open': menuOpen }">
       <div class="brand-lockup">
-        <div class="brand-mark" title="PA Crawler" aria-label="PA Crawler"><Bot :size="21" /></div>
-        <div>
-          <strong>PA Crawler</strong>
-          <span>任务管理平台</span>
+        <div class="brand-mark" role="img" title="爬虫管理平台" aria-label="爬虫管理平台标志"><BrandLogo /></div>
+        <div class="brand-copy">
+          <strong>爬虫管理平台</strong>
+          <span lang="en">Crawler Management Platform</span>
         </div>
         <button class="icon-button sidebar__close" type="button" aria-label="关闭菜单" @click="menuOpen = false">
           <X :size="19" />
@@ -106,9 +106,9 @@ function messageOf(error: unknown): string {
 
       <nav class="side-nav" aria-label="主导航">
         <span class="side-nav__section">工作台</span>
-        <RouterLink :to="{ name: 'tasks' }" title="任务控制台" aria-label="任务控制台">
+        <RouterLink :to="{ name: 'tasks' }" title="爬虫管理" aria-label="爬虫管理">
           <Activity :size="18" />
-          <span>任务控制台</span>
+          <span>爬虫管理</span>
           <ChevronRight :size="15" class="side-nav__chevron" />
         </RouterLink>
         <span class="side-nav__section">运行管理</span>

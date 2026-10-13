@@ -2,10 +2,11 @@
 import { ref } from 'vue'
 import { ElInput } from 'element-plus'
 import { useRouter } from 'vue-router'
-import { Bot, LockKeyhole, LogIn, ShieldCheck, UserRound } from '@lucide/vue'
+import { LockKeyhole, LogIn, ShieldCheck, UserRound } from '@lucide/vue'
 import { ApiError } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import ThemeToggle from '../components/ThemeToggle.vue'
+import BrandLogo from '../components/BrandLogo.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -30,16 +31,16 @@ async function submit() {
     <div class="login-scanline" />
     <section class="login-panel" aria-labelledby="login-title">
       <div class="login-brand">
-        <div class="brand-mark brand-mark--large"><Bot :size="27" /></div>
-        <div>
-          <span class="eyebrow">本地任务管理</span>
-          <strong>PA Crawler</strong>
+        <div class="brand-mark brand-mark--large" role="img" aria-label="爬虫管理平台标志"><BrandLogo /></div>
+        <div class="brand-copy">
+          <strong>爬虫管理平台</strong>
+          <span lang="en">Crawler Management Platform</span>
         </div>
       </div>
 
       <div class="login-heading">
         <div class="login-heading__status"><ShieldCheck :size="15" /> 仅限本机访问</div>
-        <h1 id="login-title">登录控制台</h1>
+        <h1 id="login-title">登录平台</h1>
       </div>
 
       <form class="login-form" @submit.prevent="submit">

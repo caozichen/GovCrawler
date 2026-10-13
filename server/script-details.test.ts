@@ -4,7 +4,7 @@ import { getDefaultScriptDetails, KNOWN_SCRIPT_FILENAMES } from './script-detail
 import { taskDetailsSchema } from './validation.js'
 
 test('provides a formatted description of at most 500 characters for every known crawler', () => {
-  assert.equal(KNOWN_SCRIPT_FILENAMES.length, 22)
+  assert.equal(KNOWN_SCRIPT_FILENAMES.length, 24)
   for (const filename of KNOWN_SCRIPT_FILENAMES) {
     const details = getDefaultScriptDetails(filename)
     assert.ok(details.length > 0, `${filename} should have details`)

@@ -26,7 +26,7 @@ Useful optional arguments:
 - `--max-pages 1 --max-articles 2`: small smoke-test limits.
 - `--skip-attachments`: parse attachment metadata without downloading files.
 
-Each run writes:
+Each Beijing HR run writes:
 
 ```text
 records.jsonl
@@ -35,6 +35,64 @@ summary.json
 articles/<article-id>.html
 attachments/<article-id>/<attachment-name>
 ```
+
+## Community-worker recruitment (Dongcheng / Chaoyang)
+
+`dongcheng_community_recruitment.py` scans Dongcheng's official notices and
+public-institution sections, supplemented by the official site's JSON search
+for archived community announcements. `chaoyang_community_recruitment.py` scans Chaoyang's
+other-recruitment section. Both paginate across the selected date range and
+identify community-worker recruitment and its follow-up announcements.
+
+Use the existing console protocol, for example:
+
+```text
+python dongcheng_community_recruitment.py \
+  --url https://www.bjdch.gov.cn/zwgk/tzgg/ \
+  --output-dir <runner-created-directory> \
+  --run-id <run-id>
+
+python chaoyang_community_recruitment.py \
+  --url http://www.bjchy.gov.cn/affair/civilemployed/zhk/ \
+  --output-dir <runner-created-directory> \
+  --run-id <run-id>
+```
+
+- `--mode auto` (default): first run looks back 730 days; later runs use each
+  source's last complete scan date minus a seven-day overlap. A missed month
+  is therefore included automatically on the next run.
+- `--mode backfill --from-date 2025-01-01 --until-date 2025-12-31`: explicit
+  historical discovery without advancing the normal incremental watermark.
+- `--lookback-days 730`, `--overlap-days 7`, `--max-pages 200`: range and
+  pagination controls. Hitting the page limit is an incomplete scan, not a
+  successful empty result.
+- `--state-dir <absolute-directory>`: persistent SQLite directory; defaults to
+  `.crawler-console/community-recruitment` beneath the project root, independent
+  of the console runner's working directory.
+- `--request-delay 0.5 --timeout 30 --retries 3`: HTTP controls.
+- `--max-attachment-mb 20` and `--skip-attachments`: attachment controls.
+
+In addition to the existing raw HTML, attachments, `records.jsonl`,
+`errors.jsonl`, and `summary.json`, each run writes `catalog.json`, containing
+all known recruitment plans with current application status and related events.
+The summary distinguishes new/updated announcements from the number of plans.
+Office/PDF job tables are downloaded but not parsed into position/vacancy counts.
+Dongcheng search responses are saved under `search-pages/`. Coverage refers to
+available column pages and indexed community titles in the target columns;
+it cannot guarantee discovery of unlisted, unindexed, or off-site announcements.
+
+Application states are `upcoming`, `open`, `closed`, `cancelled`, and `unknown`.
+Exam, interview, score and hiring-result notices do not create new application
+opportunities. Deadlines without a time remain uncertain on their final day;
+ambiguous changes and campaign relationships need review. Evidence and last
+verification time are retained. Open/upcoming/unknown plans and recently closed
+plans are rechecked even after leaving the discovery window; failed articles or
+attachments are retried on the next run. Incomplete coverage or request errors
+produce a nonzero exit status while preserving partial results.
+
+Two new built-in district tasks are imported automatically when the console
+server restarts. Their suggested interval is six hours; automatic scheduling
+remains unavailable until the console's separate scheduler feature is enabled.
 
 Run the offline regression tests from the project root:
 

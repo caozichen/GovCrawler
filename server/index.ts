@@ -523,7 +523,7 @@ app.use((error: unknown, _request: Request, response: Response, _next: NextFunct
 })
 
 const server = app.listen(port, host, () => {
-  console.log(`PA Crawler Console API: http://${host}:${port}`)
+  console.log(`Crawler Management Platform API: http://${host}:${port}`)
   console.log(`Project root: ${projectRoot}`)
 })
 

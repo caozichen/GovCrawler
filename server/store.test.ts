@@ -109,6 +109,35 @@ test('migrates legacy tasks and runs to category-aware state', async () => {
   }
 })
 
+test('adds community tasks to catalog version 1 once and preserves customized existing tasks', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'pa-community-catalog-'))
+  try {
+    const initialStore = new StateStore(root)
+    await initialStore.init()
+    const legacy = initialStore.snapshot()
+    legacy.builtinCatalogVersion = 1
+    legacy.tasks = legacy.tasks.filter((task) => !task.scriptPath.includes('community_recruitment'))
+    const customized = legacy.tasks.find((task) => task.id === 'builtin-beijing-chaoyang-recruitment')!
+    customized.name = '我设置的朝阳通用任务'
+    customized.extraArgs = ['--limit', '30']
+    await writeFile(path.join(root, '.crawler-console', 'state.json'), JSON.stringify(legacy), 'utf8')
+
+    const upgradedStore = new StateStore(root)
+    await upgradedStore.init()
+    const upgraded = upgradedStore.snapshot()
+    const community = upgraded.tasks.filter((task) => task.scriptPath.includes('community_recruitment'))
+    assert.equal(community.length, 2)
+    assert.ok(community.every((task) => task.categoryId === 'district' && task.intervalMinutes === 360))
+    assert.deepEqual(upgraded.tasks.find((task) => task.id === customized.id), customized)
+
+    const restartedStore = new StateStore(root)
+    await restartedStore.init()
+    assert.equal(restartedStore.snapshot().tasks.length, upgraded.tasks.length)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('imports missing built-ins once without overwriting existing task configuration', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'pa-builtin-migration-'))
   const stateDirectory = path.join(root, '.crawler-console')
